@@ -1,0 +1,9 @@
+{
+  "name": "ICAT",
+  "short_name": "ICAT",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#00111b",
+  "theme_color": "#00111b",
+  "description": "ICAT league operations, live scoring and streaming platform"
+}

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<meta content="#02070d" name="theme-color"/>
+<title>ICAT · Home</title>
+<link href="manifest.webmanifest" rel="manifest"/>
+<link href="app.css?v=3.2.14" rel="stylesheet"/>
+</head>
+<body data-page="home" data-view="home">
+<div aria-hidden="true" class="splash-screen-v3"><div class="splash-glow"></div><img alt="" src="assets/icat-logo.png"/><div class="splash-mantra">PLAY · COMPETE · CONNECT · GROW</div><div class="splash-location">TAMPA · FLORIDA · BEYOND</div><div class="splash-stumps">▥</div><small>MORE<br/>THAN A GAME</small></div>
+<div class="app-shell" id="app">
+<section class="login-screen icat-login-v3 hidden" id="loginScreen">
+<div class="login-atmosphere"></div>
+<div class="login-card login-card-v3">
+<div class="login-logo-wrap"><img alt="ICAT — International Cricket Association of Tampa" class="icat-logo login-logo" src="assets/icat-logo.png"/></div>
+<div class="login-welcome">WELCOME TO ICAT</div>
+<div class="login-mantra">PLAY <i>•</i> COMPETE <i>•</i> CONNECT <i>•</i> GROW</div>
+<div class="login-fields login-fields-v3">
+<label>MEMBER EMAIL<div class="input-shell"><span>✉</span><input autocomplete="email" id="loginEmail" placeholder="yourname@example.com" type="email" value="captain@icat.demo"/></div></label>
+<label>PASSWORD<div class="input-shell"><span>▣</span><input autocomplete="current-password" id="loginPassword" placeholder="Enter your password" type="password" value="demo1234"/></div></label>
+</div>
+<div class="login-meta-row"><label class="remember-line"><input checked="" type="checkbox"/> <span>Remember me</span></label><button class="forgot-link" type="button">Forgot Password?</button></div>
+<button class="gold-btn login-main-btn" id="loginBtn">MEMBER LOGIN <span>→</span></button>
+<div class="login-or"><span></span><b>OR</b><span></span></div>
+
+<button class="admin-access-btn" id="adminLoginBtn">CAPTAIN / ADMIN ACCESS</button><button class="organizer-access-btn" id="organizerLoginBtn">ORGANIZER ACCESS</button>
+<div class="login-footer-copy">CRICKET BRINGS US TOGETHER<div></div><small>TAMPA · FLORIDA · BEYOND</small></div>
+</div>
+</section>
+<div class="main-app" id="mainApp">
+<header class="topbar topbar-v3">
+<button aria-label="Open menu" class="menu-gold" id="menuBtn"><span></span><span></span><span></span></button>
+<button aria-label="ICAT Home" class="top-logo-btn" data-route="home"><img alt="ICAT" class="icat-logo top-logo" src="assets/icat-logo.png"/></button>
+<div class="top-actions top-actions-v3">
+<button aria-label="Notifications" class="bell-btn" data-route="notifications">♧<b>3</b></button>
+<span class="role-status-pill role-member" id="roleStatusPill">MEMBER</span>
+<button class="live-pill hidden-desktop-live" id="topLiveBtn"><span class="live-dot"></span>LIVE</button>
+</div>
+</header>
+<aside class="drawer profile-drawer" id="drawer">
+<div class="drawer-profile-title"><button aria-label="Close profile menu" class="drawer-profile-back" id="drawerClose">‹</button><b>PROFILE</b><small>PLAY<br/>COMPETE<br/>CONNECT<br/>GROW</small></div>
+<div class="profile-card-v3 drawer-profile-card"><div class="profile-avatar-v3" id="drawerProfileAvatar">MM</div><div><span id="drawerProfileLabel">ICAT PLAYER</span><h2 id="drawerProfileName">Manoj Kumar</h2><p id="drawerProfileEmail">captain@icat.demo</p><div class="profile-team"><img alt="FWCWL" src="assets/fwwcl-logo.png"/><b id="drawerProfileTeam">Thunderbolts<small>Florida West Coast Winter League</small></b></div></div></div>
+<div class="more-list-v3 drawer-profile-list">
+<button class="member-only hidden" data-route="availability"><b>▣</b><span><strong>Availability</strong><small>Post your match availability</small></span><i>›</i></button>
+<button class="admin-only hidden" data-route="admin" data-admin-shortcut="availability"><b>▣</b><span><strong>Availability</strong><small>Team availability by match</small></span><i>›</i></button>
+<button data-route="team"><b>♟</b><span><strong>My Team</strong><small>View your team details</small></span><i>›</i></button>
+<button class="admin-only hidden" data-route="media"><b>▦</b><span><strong>Media Center</strong><small>Upload media with notes</small></span><i>›</i></button>
+<button data-league-shortcut="stats" data-route="league"><b>▥</b><span><strong>Player Statistics</strong><small>Runs, wickets and leaders</small></span><i>›</i></button>
+<button class="member-only hidden" data-route="schedule"><b>▣</b><span><strong>Schedule</strong><small>Your team entire season schedule</small></span><i>›</i></button>
+<button class="admin-only hidden" data-admin-shortcut="schedule" data-route="admin"><b>▣</b><span><strong>Schedule</strong><small>Your team entire season schedule</small></span><i>›</i></button>
+<button class="logout-row" id="logoutBtn"><b>↪</b><span><strong>Logout</strong><small>Sign out of your account</small></span><i>›</i></button>
+</div>
+</aside>
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<main class="content" id="content">
+<section class="view home-v3 active" data-view="home">
+<div class="section-row v3-section-title"><div><span class="live-bullet"></span><h3>LIVE SCORES</h3></div><button class="cyan-link" id="viewAllLiveBtn">VIEW ALL ›</button></div>
+<div class="live-match-stack home-live-v3" id="homeLiveMatches"></div>
+<span class="hidden" id="homeLiveCount"></span>
+<div class="section-row v3-section-title"><h3>RECENT RESULTS</h3><button class="cyan-link" id="viewRecentBtn">VIEW ALL ›</button></div>
+<div class="result-carousel home-results-v3" id="homeRecentResults"></div>
+<div class="announcement-list hidden" id="homeAnnouncements"></div>
+</section>
+<section class="view" data-view="matches">
+<div class="page-title matches-title"><div><div class="eyebrow">MATCH CENTER</div><h2>Matches</h2><p class="page-sub">Live, upcoming and recent fixtures across the league.</p></div><span class="status-badge live" id="matchesLiveBadge">1 LIVE</span></div>
+<div class="segmented premium-tabs" id="matchesTabs"><button class="active" data-match-tab="live">Live</button><button data-match-tab="upcoming">Upcoming</button><button data-match-tab="recent">Recent</button></div>
+<div id="matchesPanel"></div>
+</section>
+<section class="view" data-view="league">
+<div class="league-hero-v3">
+<img alt="FWCWL" src="assets/fwwcl-logo.png"/>
+<div><span>WINTER CRICKET · STRONGER TOGETHER</span><h2>FLORIDA WEST<br/>COAST WINTER<br/>LEAGUE</h2><p>⌖ TAMPA, FL</p><strong>WINTER 2026</strong><small>BIGGER MATCHES. STRONGER COMMUNITY.</small></div>
+</div>
+<div class="season-switcher-v3"><button>‹</button><span>▣   Winter 2026</span><button>›</button></div>
+<div class="segmented premium-tabs league-tabs-v21 league-tabs-v3" id="leagueTabs"><button class="active" data-tab="overview">Overview</button><button data-tab="matches">Matches</button><button data-tab="table">Table</button><button data-tab="stats">Stats</button><button data-tab="squads">Squads</button><button data-tab="venues">Venues</button></div>
+<div id="leaguePanel"></div>
+</section>
+<section class="view" data-view="admin">
+<div class="admin-hero">
+<div><div class="eyebrow">CAPTAIN / ADMIN ACCESS</div><h2>League Operations</h2><p>Captains, squad controls, player requests, team availability, match editing and live scoring.</p></div>
+<div class="admin-shield">A</div>
+</div>
+<div class="admin-kpi-grid" id="adminKpis"></div>
+<div class="segmented premium-tabs admin-tabs" id="adminTabs"><button class="active" data-admin-tab="captains">Captains</button><button data-admin-tab="squads">Squad Edit</button><button data-admin-tab="availability">Availability</button><button data-admin-tab="matches">Match Ops</button><button data-admin-tab="contact">Contact Organizer</button></div>
+<div id="adminPanel"></div>
+</section>
+<section class="view organizer-view" data-view="organizer">
+<div class="admin-hero organizer-hero"><div><div class="eyebrow">LEAGUE ORGANIZER ACCESS</div><h2>Organizer Console</h2><p>Teams, players, captain/admin access, Excel roster and schedule imports, and the organizer inbox.</p></div><div class="admin-shield organizer-shield">O</div></div>
+<div class="admin-kpi-grid" id="organizerKpis"></div>
+<div class="segmented premium-tabs organizer-tabs" id="organizerTabs"><button class="active" data-organizer-tab="overview">Overview</button><button data-organizer-tab="teams">Teams</button><button data-organizer-tab="players">Players</button><button data-organizer-tab="access">Admin Access</button><button data-organizer-tab="rosters">Roster Excel</button><button data-organizer-tab="schedule">Schedule Excel</button><button data-organizer-tab="inbox">Inbox</button></div>
+<div id="organizerPanel"></div>
+</section><section class="view score-view" data-view="score">
+<div class="page-title score-title"><div><div class="eyebrow">ADMIN · MATCH OPERATIONS</div><h2>Live Scoring Desk</h2></div><button class="ghost-btn small" id="selectScoreMatchBtn">Select Match</button></div>
+<div class="score-frame-wrap"><iframe id="scoringFrame" src="scoring/index.html?v=3.2.5" title="ICAT Scoring Desk"></iframe></div>
+</section>
+<section class="view" data-view="stream">
+<div class="page-title"><div><div class="eyebrow">ADMIN · YOUTUBE LIVE</div><h2>ICAT Live Studio</h2></div><span class="status-badge" id="streamStateBadge">OFFLINE</span></div>
+<div class="stream-layout">
+<section class="stream-preview-card"><video id="cameraPreview" muted="" playsinline=""></video><div class="preview-empty" id="previewEmpty"><div class="camera-icon">◉</div><strong>Camera preview</strong><small>Enable preview or launch the native stream studio.</small></div><div class="stream-overlay"><span id="streamResolutionOverlay">1080p · 30fps</span><span id="streamBitrateOverlay">10 Mbps</span></div></section>
+<section class="stream-controls glass"><div class="youtube-channel-lock"><img alt="ICAT" src="assets/icat-logo.png"/><div><span>ADMIN-ONLY BROADCAST TARGET</span><strong>ICAT YouTube · @ICAT-FT20</strong><small>Use the RTMPS stream key created in this channel's YouTube Live Control Room.</small></div><button class="youtube-btn" id="openYoutubeChannelBtn">Open Channel ↗</button></div><div class="control-head"><div><div class="card-kicker">BROADCAST PROFILE</div><h3>Direct to ICAT YouTube</h3></div><button class="youtube-btn" id="connectYoutubeBtn">▶ Connect</button></div><div class="form-grid two"><label>Quality<select id="streamQuality"><option value="4k30">4K · 2160p 30</option><option value="1080p60">1080p 60</option><option selected="" value="1080p30">1080p 30</option><option value="720p60">720p 60</option></select></label><label>Camera<select id="streamCamera"><option value="back">Back camera</option><option value="front">Front camera</option></select></label><label class="span2">Broadcast Title<input id="streamTitle" value="ICAT Live — Florida West Coast Winter League"/></label><label class="span2">RTMPS Endpoint<input id="streamEndpoint" placeholder="rtmps://a.rtmp.youtube.com/live2/ICAT_CHANNEL_STREAM_KEY"/></label></div><div class="stream-health"><div><span>Network</span><strong id="networkLabel">Ready</strong></div><div><span>Encoder</span><strong>H.264 / AAC</strong></div><div><span>Latency</span><strong id="latencyLabel">Normal</strong></div></div><div class="stream-buttons"><button class="ghost-btn" id="previewBtn">Camera Preview</button><button class="primary-btn" id="startStreamBtn">Go Live</button><button class="danger-btn" disabled="" id="stopStreamBtn">Stop</button></div><div class="stream-note">Native Android streaming uses RTMPS. YouTube credentials and stream keys are never hardcoded in the app.</div></section>
+</div>
+</section>
+<section class="view teams-v3" data-view="team">
+<div class="page-title teams-title-v3"><div><div class="eyebrow">TEAMS</div><h2>Stronger Teams<br/>A Brighter League</h2><p class="page-sub">PLAY · COMPETE · CONNECT · GROW</p></div></div>
+<div class="teams-showcase-v3" id="teamsShowcase"></div>
+<div class="my-team-panel-v3">
+<div class="section-row"><div><span class="card-kicker">MY TEAM</span><h3>Thunderbolts</h3></div><div class="team-contact"><button class="ghost-btn small" id="teamWhatsApp">WhatsApp</button><button class="ghost-btn small" id="teamEmail">Email Team</button></div></div>
+<div class="section-row"><h3>Squad</h3><button class="primary-btn small admin-only hidden" id="requestPlayerBtn">Request New Player</button></div>
+<div class="roster-grid" id="rosterGrid"></div>
+<div class="section-row"><h3>My Next Match Availability</h3><span class="muted">Private to captain/admin</span></div>
+<div class="availability-list" id="availabilityList"></div>
+</div>
+</section>
+<section class="view" data-view="media">
+<div class="page-title"><div><div class="eyebrow">ICAT MEDIA</div><h2>Media Center</h2></div><button class="primary-btn small admin-only hidden" id="uploadMvpBtn">+ Upload Media</button></div>
+<div class="media-tabs segmented"><button class="active" data-media="highlights">Highlights</button><button data-media="announcements">Announcements</button><button data-media="gallery">Gallery</button></div>
+<div id="mediaPanel"></div>
+</section>
+<section class="view" data-view="availability">
+<div class="page-title"><div><div class="eyebrow">MEMBER · MY TEAM</div><h2>My Availability</h2><p class="page-sub">Post only your own availability for your team matches.</p></div></div>
+<div id="memberAvailabilityPanel"></div>
+</section>
+<section class="view" data-view="schedule">
+<div class="page-title"><div><div class="eyebrow">MEMBER · MY TEAM</div><h2>Team Schedule</h2><p class="page-sub">Your team’s complete season schedule.</p></div></div>
+<div id="memberSchedulePanel"></div>
+</section>
+<section class="view more-v317" data-view="more">
+<div class="page-title"><div><div class="eyebrow">ICAT</div><h2>More</h2></div></div>
+<div class="more-list-v3 more-page-list">
+<button data-route="announcements"><b>▣</b><span><strong>Announcements</strong><small>League news and official updates</small></span><i>›</i></button>
+<button data-route="galleryPublic"><b>▦</b><span><strong>Gallery</strong><small>ICAT league photos and media</small></span><i>›</i></button>
+<button data-external-url="https://www.facebook.com/search/top?q=International%20Cricket%20Association%20of%20Tampa"><b>f</b><span><strong>Facebook</strong><small>Find ICAT on Facebook</small></span><i>↗</i></button>
+<button data-external-url="https://www.instagram.com/explore/search/keyword/?q=international%20cricket%20association%20of%20tampa"><b>◎</b><span><strong>Instagram</strong><small>Find ICAT on Instagram</small></span><i>↗</i></button>
+<button data-route="teamIcat"><b>♟</b><span><strong>Team ICAT</strong><small>About the International Cricket Association of Tampa</small></span><i>›</i></button>
+<button data-route="privacy"><b>▤</b><span><strong>Privacy and Policy</strong><small>How ICAT handles app and league information</small></span><i>›</i></button>
+<button data-route="terms"><b>§</b><span><strong>Terms and Conditions</strong><small>ICAT application and league terms</small></span><i>›</i></button>
+</div>
+</section>
+<section class="view" data-view="announcements">
+<div class="page-title"><div><div class="eyebrow">ICAT · MORE</div><h2>Announcements</h2></div></div>
+<div class="announcement-list" id="publicAnnouncementsList"></div>
+</section>
+<section class="view" data-view="galleryPublic">
+<div class="page-title"><div><div class="eyebrow">ICAT · MORE</div><h2>Gallery</h2></div></div>
+<div id="publicGalleryList"></div>
+</section>
+<section class="view" data-view="teamIcat">
+<div class="page-title"><div><div class="eyebrow">ABOUT ICAT</div><h2>Team ICAT</h2></div></div>
+<section class="dash-card"><div class="profile-team"><img alt="ICAT" src="assets/icat-logo.png"/><div><strong>International Cricket Association of Tampa</strong><small>Play · Compete · Connect · Grow</small></div></div><p>ICAT supports organized cricket, league competition and cricket community development across the Tampa Bay area.</p></section>
+</section>
+<section class="view" data-view="privacy">
+<div class="page-title"><div><div class="eyebrow">ICAT · LEGAL</div><h2>Privacy and Policy</h2></div></div>
+<section class="dash-card"><p>ICAT uses account, roster, match, availability and league information to operate the application and league workflows. Access to administrative information is role controlled. Private account and team information should be used only for authorized ICAT league purposes.</p><p>Streaming credentials and private service credentials must never be shared publicly or stored in public source repositories.</p></section>
+</section>
+<section class="view" data-view="terms">
+<div class="page-title"><div><div class="eyebrow">ICAT · LEGAL</div><h2>Terms and Conditions</h2></div></div>
+<section class="dash-card"><p>Use of ICAT is subject to league rules, authorized account access and responsible use of scoring, scheduling, communication and streaming functions. Users must use only the permissions assigned to their account.</p><p>League organizers may update schedules, rosters and administrative access as required for league operations.</p></section>
+</section>
+<section class="view" data-view="notifications">
+<div class="page-title"><div><div class="eyebrow">ICAT</div><h2>Notifications</h2></div></div>
+<div class="announcement-list" id="notificationsFeed"></div>
+<div class="notify-layout admin-only hidden"><section class="glass notify-composer"><div class="form-grid two"><label>Audience<select id="notifyAudience"><option>All Captains</option><option>Thunderbolts Captain</option><option>Bay Strikers Captain</option><option>Tampa Titans Captain</option><option>Clearwater CC Captain</option></select></label><label>Channel<select id="notifyChannel"><option value="both">WhatsApp + Email</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option></select></label><label class="span2">Subject<input id="notifySubject" value="Florida West Coast Winter League Update"/></label><label class="span2">Message<textarea id="notifyMessage" rows="6">Reminder: Please confirm your team availability for this weekend's fixtures.</textarea></label></div><button class="primary-btn full" id="sendNotifyBtn">Send League Notification</button></section><section class="dash-card"><div class="card-kicker">CAPTAIN DIRECTORY</div><div class="captain-list" id="captainDirectory"></div></section></div>
+</section>
+</main>
+<nav class="bottom-nav bottom-nav-v3">
+<button class="active" data-route="home"><span>⌂</span><small>Home</small></button>
+<button class="" data-route="matches"><span>▣</span><small>Matches</small></button>
+<button class="score-nav" data-route="league"><span>♕</span><small>Leagues</small></button>
+<button class="" data-route="team"><span>♟</span><small>Teams</small></button>
+<button class="" data-route="more"><span>•••</span><small>More</small></button>
+</nav>
+</div>
+</div>
+<div id="modalRoot"></div>
+<div class="toast-root" id="toastRoot"></div>
+<script src="vendor/jszip.min.js"></script><script src="app.js?v=3.2.17"></script>
+</body>
+</html>
