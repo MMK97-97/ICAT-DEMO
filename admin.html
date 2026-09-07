@@ -5,11 +5,11 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#02070d" name="theme-color"/>
-<title>ICAT · Admin Captains</title>
+<title>ICAT · Admin Match Ops</title>
 <link href="manifest.webmanifest" rel="manifest"/>
 <link href="app.css?v=3.2.19" rel="stylesheet"/>
 </head>
-<body data-page="admin" data-tab="captains" data-view="admin">
+<body data-page="admin" data-tab="matches" data-view="admin">
 <div aria-hidden="true" class="splash-screen-v3"><div class="splash-glow"></div><img alt="" src="assets/icat-logo.png"/><div class="splash-mantra">PLAY · COMPETE · CONNECT · GROW</div><div class="splash-location">TAMPA · FLORIDA · BEYOND</div><div class="splash-stumps">▥</div><small>MORE<br/>THAN A GAME</small></div>
 <div class="app-shell" id="app">
 <section class="login-screen icat-login-v3 hidden" id="loginScreen">
@@ -79,12 +79,7 @@
 <div id="leaguePanel"></div>
 </section>
 <section class="view active" data-view="admin">
-<div class="admin-hero">
-<div><div class="eyebrow">CAPTAIN / ADMIN ACCESS</div><h2>League Operations</h2><p>Captains, squad controls, player requests, team availability, match editing and live scoring.</p></div>
-<div class="admin-shield">A</div>
-</div>
-<div class="admin-kpi-grid" id="adminKpis"></div>
-<div class="segmented premium-tabs admin-tabs" id="adminTabs"><button class="active" data-admin-tab="captains">Captains</button><button data-admin-tab="squads">Squad Edit</button><button data-admin-tab="availability">Availability</button><button data-admin-tab="matches">Match Ops</button><button data-admin-tab="contact">Contact Organizer</button></div>
+<div class="segmented premium-tabs admin-tabs" id="adminTabs"><button data-admin-tab="squads">Squad Edit</button><button data-admin-tab="availability">Availability</button><button class="active" data-admin-tab="matches">Match Ops</button><button data-admin-tab="contact">Contact Organizer</button></div>
 <div id="adminPanel"></div>
 </section>
 <section class="view organizer-view" data-view="organizer">
@@ -176,6 +171,6 @@
 </div>
 <div id="modalRoot"></div>
 <div class="toast-root" id="toastRoot"></div>
-<script src="vendor/jszip.min.js"></script><script src="app.js?v=3.2.19"></script>
+<script src="vendor/jszip.min.js"></script><script src="app.js?v=3.2.20"></script>
 </body>
 </html>

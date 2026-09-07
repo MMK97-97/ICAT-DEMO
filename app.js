@@ -60,6 +60,12 @@
         scoreA: '87/3', scoreB: 'Yet to bat', oversA: '10.4', batsman: 'Rahul Desai 34*', bowler: 'Omar Ali 2/18', crr: '8.15',
         tossWinner: 'Tampa Titans', decision: 'bat', rosterA: [], rosterB: []
       },
+      {
+        id: 'tb-live-test', week: 4, date: '2026-09-07', time: '16:00', venue: 'Tampa Cricket Ground', leagueId: 'fwwl',
+        teamA: 'Thunderbolts', teamB: 'Bay Strikers', overs: 20, status: 'live', innings: '1st Innings',
+        scoreA: '0/0', scoreB: 'Yet to bat', oversA: '0.0', batsman: 'Manoj Kumar 0*', bowler: 'Aman Patel 0/0', crr: '0.00',
+        tossWinner: 'Thunderbolts', decision: 'bat', battingTeam: 'Thunderbolts', currentInnings: 0, rosterA: [], rosterB: []
+      },
       { id: 'm1', week: 1, date: '2026-08-23', time: '08:30', venue: 'Tampa Cricket Ground', leagueId: 'fwwl', teamA: 'Thunderbolts', teamB: 'Clearwater CC', overs: 20, status: 'result', scoreA: '164/6', scoreB: '151/9', result: 'Thunderbolts won by 13 runs' },
       { id: 'm2', week: 2, date: '2026-08-30', time: '14:00', venue: 'USF Cricket Field', leagueId: 'fwwl', teamA: 'Bay Strikers', teamB: 'Tampa Titans', overs: 20, status: 'result', scoreA: '142/8', scoreB: '143/5', result: 'Tampa Titans won by 5 wickets' },
       { id: 'm3', week: 3, date: '2026-09-06', time: '09:00', venue: 'Tampa Cricket Ground', leagueId: 'fwwl', teamA: 'Clearwater CC', teamB: 'Bay Strikers', overs: 20, status: 'result', scoreA: '128/10', scoreB: '129/7', result: 'Bay Strikers won by 3 wickets' },
@@ -178,7 +184,7 @@
   let role = localStorage.getItem(ROLE_STORAGE) || 'member';
   let activeMatchTab = 'live';
   let activeLeagueTab = 'overview';
-  let activeAdminTab = 'captains';
+  let activeAdminTab = 'matches';
   let activeOrganizerTab = 'overview';
   let activeStatsCategory = 'batting';
   let activeAvailabilityMatchId = '';
@@ -207,6 +213,14 @@
       merged.stats = { ...clone(demo.stats), ...savedStats };
       ['batting','bowling','allrounder','fielding','sixes'].forEach(k => { merged.stats[k] = mergeStatRows(demo.stats[k] || [], savedStats[k] || []); });
       merged.adminAccess = { ...clone(demo.adminAccess), ...(saved.adminAccess || {}) };
+      // Keep the Thunderbolts live-scoring test fixture available when upgrading
+      // from an older locally saved demo state whose matches array predates it.
+      const tbTestFixture = demo.matches.find(m => m.id === 'tb-live-test');
+      if (tbTestFixture) {
+        if (!Array.isArray(merged.matches)) merged.matches = clone(demo.matches);
+        const existingTest = merged.matches.find(m => m.id === tbTestFixture.id);
+        if (!existingTest) merged.matches.push(clone(tbTestFixture));
+      }
       const demoDirectory = {};
       Object.entries(demo.squads).forEach(([teamName, squad]) => {
         const team = demo.teams.find(t => t.name === teamName);
@@ -330,7 +344,7 @@
     teamIcat: 'team-icat.html',
     privacy: 'privacy-policy.html',
     terms: 'terms.html',
-    admin: { captains: 'admin.html', squads: 'admin-squads.html', availability: 'admin-availability.html', schedule: 'admin-schedule.html', matches: 'admin-matches.html', contact: 'admin-contact.html' },
+    admin: { matches: 'admin-matches.html', squads: 'admin-squads.html', availability: 'admin-availability.html', schedule: 'admin-schedule.html', contact: 'admin-contact.html' },
     organizer: { overview: 'organizer.html', teams: 'organizer-teams.html', players: 'organizer-players.html', access: 'organizer-access.html', rosters: 'organizer-rosters.html', schedule: 'organizer-schedule.html', inbox: 'organizer-inbox.html' },
     score: 'live-scoring.html',
     stream: 'live-studio.html',
@@ -350,7 +364,7 @@
     const target = PAGE_ROUTES[name];
     if (!target) return 'home.html';
     if (typeof target === 'string') return target;
-    const tab = options.tab || (name === 'matches' ? 'live' : name === 'league' ? 'overview' : name === 'media' ? 'highlights' : name === 'admin' ? 'captains' : name === 'organizer' ? 'overview' : '');
+    const tab = options.tab || (name === 'matches' ? 'live' : name === 'league' ? 'overview' : name === 'media' ? 'highlights' : name === 'admin' ? 'matches' : name === 'organizer' ? 'overview' : '');
     return target[tab] || Object.values(target)[0];
   }
 
@@ -730,22 +744,13 @@
     bindDynamic();
   }
 
-  function renderAdmin(tab = 'captains') {
+  function renderAdmin(tab = 'matches') {
     if (!isAdmin()) return;
+    if (tab === 'captains') tab = 'matches';
     activeAdminTab = tab;
     $$('#adminTabs button').forEach(b => b.classList.toggle('active', b.dataset.adminTab === tab));
-    const next = getNextMatchForTeam(state.user.team);
-    const av = next ? getAvailabilitySummary(next.id) : { yes: 0, no: 0, unknown: 0 };
-    $('adminKpis').innerHTML = `
-      <div class="admin-kpi"><span>CAPTAINS</span><strong>${state.teams.length}</strong><small>League teams</small></div>
-      <div class="admin-kpi"><span>NEXT MATCH</span><strong>${next ? dateLabel(next.date).split(',')[0] : '—'}</strong><small>${next ? `${next.teamA} vs ${next.teamB}` : 'No fixture'}</small></div>
-      <div class="admin-kpi"><span>AVAILABLE</span><strong>${av.yes}</strong><small>${av.unknown} pending · ${av.no} unavailable</small></div>
-      <div class="admin-kpi"><span>PLAYER REQUESTS</span><strong>${state.playerRequests.length}</strong><small>Committee email queue</small></div>`;
 
     const p = $('adminPanel');
-    if (tab === 'captains') {
-      p.innerHTML = `<div class="captain-admin-grid">${state.teams.map(t => `<article class="captain-admin-card"><div class="captain-avatar ${t.color}">${initials(t.captain)}</div><div><div class="card-kicker">${escapeHtml(t.name)}</div><h3>${escapeHtml(t.captain)}</h3><p>${escapeHtml(t.email)}<br>${escapeHtml(t.phone)}</p></div><div class="captain-actions"><button class="ghost-btn small captain-wa" data-phone="${t.phone}">WhatsApp</button><button class="ghost-btn small captain-email" data-email="${t.email}">Email</button><button class="text-btn edit-captain" data-team="${escapeHtml(t.name)}">Edit captain</button></div></article>`).join('')}</div>`;
-    }
     if (tab === 'squads') {
       p.innerHTML = `<section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">SQUAD MANAGEMENT</div><h3>Edit registered squad</h3></div><div class="admin-work-actions"><select id="squadTeamSelect">${state.teams.map(t => `<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('')}</select><button id="adminRequestPlayerBtn" class="primary-btn small">Request New Player</button></div></div><div id="adminSquadEditor"></div></section><section class="admin-work-card requests-card"><div class="admin-work-head"><div><div class="card-kicker">COMMITTEE REQUESTS</div><h3>Player add requests</h3></div></div><div id="playerRequestList"></div></section>`;
       $('squadTeamSelect').value = state.user.team;
@@ -767,7 +772,7 @@
       }).join('') : '<div class="empty-state"><strong>No matches in this season</strong></div>'}</div></section>`;
     }
     if (tab === 'matches') {
-      const rows = state.matches.filter(m => ['live', 'scheduled'].includes(m.status));
+      const rows = adminTeamMatches().filter(m => ['live', 'scheduled'].includes(m.status));
       p.innerHTML = `<div class="admin-match-list">${rows.map(m => `<article class="admin-match-card ${m.status}"><div class="admin-match-status"><span>${m.status === 'live' ? 'LIVE NOW' : `WEEK ${m.week}`}</span><small>${dateLabel(m.date)} · ${escapeHtml(m.time)}</small></div><div class="admin-match-teams"><strong>${escapeHtml(m.teamA)}</strong><b>VS</b><strong>${escapeHtml(m.teamB)}</strong><small>${escapeHtml(m.venue)} · ${m.overs} overs</small></div><div class="admin-match-actions"><button class="ghost-btn small edit-match" data-match-id="${m.id}">Edit Match Center</button>${canAdminScoreMatch(m) ? `<button class="primary-btn small score-match" data-match-id="${m.id}">${m.status === 'live' ? 'Open Live Scoring' : 'Open Scoring'}</button>` : ''}</div></article>`).join('')}</div>`;
     }
     if (tab === 'contact') {
@@ -1245,6 +1250,7 @@
     if (!isAdmin()) { toast('Captain / Admin access is required'); return; }
     const m = state.matches.find(x => x.id === id);
     if (!m) return;
+    if (!adminOwnsMatch(m)) { toast('Match Center is restricted to your team matches'); return; }
     const squadA = state.squads[m.teamA] || [];
     const squadB = state.squads[m.teamB] || [];
     const selectedA = m.rosterA?.length ? new Set(m.rosterA) : new Set(squadA.slice(0, 11).map(p => p[0]));
