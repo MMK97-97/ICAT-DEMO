@@ -1583,3 +1583,32 @@ img{content-visibility:auto;}
 .admin-pick-row{display:grid!important;grid-template-columns:18px 1fr!important;align-items:center!important;gap:9px!important;padding:9px 10px!important}
 .admin-pick-row span{min-width:0}.admin-pick-row strong,.admin-pick-row small{display:block}.admin-pick-row small{margin-top:2px;color:#7594a8;font-size:7px;overflow-wrap:anywhere}
 .organizer-remove-admin-list{display:grid;gap:7px}.organizer-remove-one{width:100%;display:grid;grid-template-columns:1fr auto;gap:2px 8px;text-align:left}.organizer-remove-one span{font-size:9px;font-weight:900}.organizer-remove-one small{grid-column:1;color:#8da4b5;overflow-wrap:anywhere}.organizer-remove-one b{grid-column:2;grid-row:1/3;align-self:center;font-size:7px}
+
+/* v3.2.18 bottom navigation: Home · Matches · Live Scoring · Leagues · More */
+.bottom-nav-v3 .live-score-nav-icon{display:inline-flex!important;align-items:flex-end!important;justify-content:center!important;gap:2px!important;width:23px!important;height:22px!important;font-size:0!important;line-height:1!important}
+.bottom-nav-v3 .live-score-nav-icon i{display:block;width:4px;border-radius:2px 2px 0 0;background:currentColor;box-shadow:0 0 7px currentColor}
+.bottom-nav-v3 .live-score-nav-icon i:nth-child(1){height:10px}
+.bottom-nav-v3 .live-score-nav-icon i:nth-child(2){height:19px}
+.bottom-nav-v3 .live-score-nav-icon i:nth-child(3){height:14px}
+
+
+/* ICAT v3.2.19 — STANDARD BOTTOM NAV LOCK
+   Permanent app navigation: Home · Matches · Live Scoring · Leagues · More */
+.bottom-nav.bottom-nav-v3{
+  position:fixed!important;
+  left:50%!important;
+  right:auto!important;
+  bottom:0!important;
+  transform:translateX(-50%)!important;
+  width:min(560px,100%)!important;
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  z-index:70!important;
+}
+.bottom-nav.bottom-nav-v3>button{
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+}

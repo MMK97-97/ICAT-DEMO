@@ -275,8 +275,19 @@
     return !!(isAdmin() && m && state.user?.team && [m.teamA, m.teamB].includes(state.user.team));
   }
 
+  function localDateKey(d = new Date()) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function isMatchDay(m) {
+    return !!(m && String(m.date || '').slice(0, 10) === localDateKey());
+  }
+
   function canAdminScoreMatch(m) {
-    return !!(adminOwnsMatch(m) && currentBattingTeam(m) === state.user.team);
+    return !!(adminOwnsMatch(m) && isMatchDay(m) && m.status !== 'result' && currentBattingTeam(m) === state.user.team);
   }
 
   function canAdminStreamMatch(m) {
@@ -375,7 +386,9 @@
       return;
     }
     if (name === 'score' && !selectedScoringMatch()) {
-      toast('Live Scoring is available only to the batting team admin for their match');
+      const eligible = state.matches.find(m => canAdminScoreMatch(m));
+      if (eligible) { loadMatchIntoScorer(eligible); return; }
+      toast('Live Scoring is available only to your team Admin on match day while your team is batting');
       transitionNavigate(routeUrl('admin', { tab: 'matches' }));
       return;
     }
@@ -508,7 +521,9 @@
       return;
     }
     if (name === 'score' && !selectedScoringMatch()) {
-      toast('Select one of your matches where your team is batting');
+      const eligible = state.matches.find(m => canAdminScoreMatch(m));
+      if (eligible) { loadMatchIntoScorer(eligible); return; }
+      toast('Live Scoring is available only to your team Admin on match day while your team is batting');
       transitionNavigate(routeUrl('admin', { tab: 'matches' }));
       return;
     }
@@ -1277,7 +1292,7 @@
       save();
       closeModal();
       if (!canAdminScoreMatch(m)) {
-        toast(`Match saved. Live Scoring is available only when ${state.user.team} is batting.`);
+        toast(isMatchDay(m) ? `Match saved. Live Scoring is available only when ${state.user.team} is batting.` : 'Match saved. Live Scoring opens only on match day.');
         renderAdmin('matches');
         return;
       }
@@ -1289,7 +1304,7 @@
   function loadMatchIntoScorer(m) {
     if (!isAdmin()) { toast('Captain / Admin access is required'); return; }
     if (!adminOwnsMatch(m)) { toast('Live Scoring is restricted to your team matches'); return; }
-    if (!canAdminScoreMatch(m)) { toast(`Only the batting team admin can score this match. ${currentBattingTeam(m) || 'Batting team'} has scoring control.`); return; }
+    if (!canAdminScoreMatch(m)) { if (!isMatchDay(m)) toast('Live Scoring is available only on this match day'); else toast(`Only the batting team admin can score this match. ${currentBattingTeam(m) || 'Batting team'} has scoring control.`); return; }
 
     try {
       const existing = JSON.parse(sessionStorage.getItem(SCORING_SESSION_KEY) || 'null');
@@ -1527,7 +1542,22 @@
     $('mainApp').classList.add('hidden'); $('loginScreen').classList.remove('hidden'); applyRoleUI(); transitionNavigate('index.html', true);
   }
 
+  function enforceStandardBottomNav() {
+    const nav = document.querySelector('.bottom-nav.bottom-nav-v3');
+    if (!nav) return;
+    const activeRoute = nav.querySelector('[data-route].active')?.dataset.route || '';
+    nav.innerHTML = `
+<button data-route="home"><span>⌂</span><small>Home</small></button>
+<button data-route="matches"><span>▣</span><small>Matches</small></button>
+<button class="score-nav" data-route="score"><span class="live-score-nav-icon" aria-hidden="true"><i></i><i></i><i></i></span><small>Live Scoring</small></button>
+<button data-route="league"><span>♕</span><small>Leagues</small></button>
+<button data-route="more"><span>•••</span><small>More</small></button>`;
+    if (activeRoute) nav.querySelector(`[data-route="${activeRoute}"]`)?.classList.add('active');
+    nav.setAttribute('data-standard-nav', 'locked');
+  }
+
   function init() {
+    enforceStandardBottomNav();
     const cfg = currentPageConfig();
     const loggedIn = localStorage.getItem(LOGIN_STORAGE) === '1';
 
