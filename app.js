@@ -479,7 +479,7 @@
     privacy: 'privacy-policy.html',
     terms: 'terms.html',
     admin: { matches: 'admin-matches.html', squads: 'admin-squads.html', availability: 'admin-availability.html', schedule: 'admin-schedule.html', contact: 'admin-contact.html' },
-    organizer: { overview: 'organizer.html', teams: 'organizer-teams.html', players: 'organizer-players.html', access: 'organizer-access.html', rosters: 'organizer-rosters.html', schedule: 'organizer-schedule.html', announcements: 'organizer-announcements.html', inbox: 'organizer-inbox.html' },
+    organizer: { overview: 'organizer.html', teams: 'organizer-teams.html', players: 'organizer-players.html', access: 'organizer-access.html', rosters: 'organizer-rosters.html', schedule: 'organizer-schedule.html', announcements: 'organizer-announcements.html', media: 'organizer-media.html', inbox: 'organizer-inbox.html' },
     score: 'live-scoring.html',
     stream: 'live-studio.html',
     notifications: 'notifications.html',
@@ -533,7 +533,7 @@
     const go = () => replace ? location.replace(url) : (location.href = url);
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { go(); return; }
     document.documentElement.classList.add('page-leaving');
-    window.setTimeout(go, 150);
+    window.setTimeout(go, 55);
   }
 
   function activateLocal(name, options = {}) {
@@ -674,6 +674,13 @@
     if ($('drawerProfileTeam')) $('drawerProfileTeam').childNodes[0].nodeValue = profileTeam;
     if ($('drawerProfileAvatar')) $('drawerProfileAvatar').textContent = profileInitials;
     if ($('drawerProfileLabel')) $('drawerProfileLabel').textContent = isOrganizer() ? 'ICAT ORGANIZER' : isAdmin() ? 'ICAT CAPTAIN / ADMIN' : 'ICAT PLAYER';
+    const drawerStats = document.querySelector('.drawer-profile-list [data-league-shortcut="stats"]');
+    if (drawerStats) {
+      const strong = drawerStats.querySelector('strong');
+      const small = drawerStats.querySelector('small');
+      if (strong) strong.textContent = isMember() ? 'My Stats' : 'Player Statistics';
+      if (small) small.textContent = isMember() ? 'Only your statistics' : 'Runs, wickets and leaders';
+    }
     refreshNotificationBadge();
     document.body.dataset.role = role;
   }
@@ -991,13 +998,9 @@
     $$('#organizerTabs button').forEach(b => b.classList.toggle('active', b.dataset.organizerTab === tab));
     const p = $('organizerPanel');
     if (!p) return;
-    const pendingPlayerRequests = (state.playerRequests || []).filter(x => !x.status || x.status === 'pending').length;
-    const openMessages = (state.adminMessages || []).filter(x => (x.status || 'open') !== 'resolved').length + pendingPlayerRequests;
-    if ($('organizerKpis')) $('organizerKpis').innerHTML = `
-      <div class="admin-kpi organizer-inbox-kpi"><span>INBOX</span><strong>${openMessages}</strong><small>Open items</small></div>`;
 
     if (tab === 'overview') {
-      p.innerHTML = `<div class="organizer-overview-grid"><section class="organizer-action-grid"><button data-organizer-shortcut="teams"><b>♟</b><strong>Add / Manage Teams</strong><small>League team directory</small></button><button data-organizer-shortcut="players"><b>♙+</b><strong>Add Players</strong><small>Assign players to squads</small></button><button data-organizer-shortcut="access"><b>⚙</b><strong>Admin Access</strong><small>Grant or revoke captain access</small></button><button data-organizer-shortcut="rosters"><b>XL</b><strong>Roster Excel Upload</strong><small>Organizer-only roster import</small></button><button data-organizer-shortcut="schedule"><b>▣</b><strong>Schedule Excel Upload</strong><small>Update league fixtures</small></button><button data-organizer-shortcut="announcements"><b>!</b><strong>Announcements</strong><small>Send to everyone or admins</small></button><button data-organizer-shortcut="inbox"><b>✉</b><strong>Admin Inbox</strong><small>Requests, complaints, feedback</small></button></section><section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">ADMIN DIRECTORY</div><h3>Reach Captains / Admins</h3></div></div><div class="captain-admin-grid compact-org">${state.teams.map(t => organizerAdminCard(t)).join('')}</div></section></div>`;
+      p.innerHTML = `<div class="organizer-overview-grid"><section class="organizer-action-grid"><button data-organizer-shortcut="teams"><b>♟</b><strong>Add / Manage Teams</strong><small>League team directory</small></button><button data-organizer-shortcut="players"><b>♙+</b><strong>Add Players</strong><small>Assign players to squads</small></button><button data-organizer-shortcut="access"><b>⚙</b><strong>Admin Access</strong><small>Grant or revoke captain access</small></button><button data-organizer-shortcut="rosters"><b>XL</b><strong>Roster Excel Upload</strong><small>Organizer-only roster import</small></button><button data-organizer-shortcut="schedule"><b>▣</b><strong>Schedule Excel Upload</strong><small>Update league fixtures</small></button><button data-organizer-shortcut="announcements"><b>!</b><strong>Announcements</strong><small>Send to everyone or admins</small></button><button data-organizer-shortcut="media"><b>▦</b><strong>Media</strong><small>Receive admin-uploaded pictures</small></button><button data-organizer-shortcut="inbox"><b>✉</b><strong>Admin Inbox</strong><small>Requests, complaints, feedback</small></button></section></div>`;
     }
     if (tab === 'teams') {
       p.innerHTML = `<section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">LEAGUE TEAMS</div><h3>Team Management</h3></div><button class="primary-btn small" id="organizerAddTeamBtn">+ Add Team</button></div><div class="organizer-team-list">${state.teams.map(t => `<article><div class="captain-avatar ${t.color}">${initials(t.name)}</div><div><strong>${escapeHtml(t.name)}</strong><small>Captain · ${escapeHtml(t.captain)} · ${(state.squads[t.name]||[]).length} players</small></div><div><button class="ghost-btn small captain-email" data-email="${escapeHtml(t.email)}">Email</button><button class="ghost-btn small captain-wa" data-phone="${escapeHtml(t.phone)}">WhatsApp</button></div></article>`).join('')}</div></section>`;
@@ -1026,6 +1029,11 @@
       const history = (state.announcements || []).slice().sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
       p.innerHTML = `<section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">LEAGUE COMMUNICATION</div><h3>Announcements</h3></div></div><div class="form-grid two"><label>To<select id="organizerAnnouncementAudience"><option value="all">Everyone</option><option value="admins">Admins</option></select></label><label>Subject<input id="organizerAnnouncementSubject" placeholder="Announcement subject"></label><label class="span2">Announcement<textarea id="organizerAnnouncementBody" rows="6" placeholder="Write the announcement"></textarea></label></div><button class="primary-btn full" id="sendOrganizerAnnouncementBtn">Send Announcement</button></section><section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">SENT ANNOUNCEMENTS</div><h3>History</h3></div></div><div class="organizer-inbox-list">${history.length ? history.map(a => `<article class="announcement"><strong>${escapeHtml(a.title || 'Announcement')}</strong><small>${escapeHtml((a.audience || 'all') === 'admins' ? 'ADMINS' : 'EVERYONE')} · ${escapeHtml(a.date || '')}${a.text ? ` · ${escapeHtml(a.text)}` : ''}</small></article>`).join('') : '<div class="empty-state"><strong>No announcements yet</strong></div>'}</div></section>`;
       $('sendOrganizerAnnouncementBtn').onclick = sendOrganizerAnnouncement;
+    }
+
+    if (tab === 'media') {
+      const mediaItems = (state.mediaDrafts || []).filter(x => x && x.kind === 'image' && x.image).slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+      p.innerHTML = `<section class="admin-work-card organizer-mvp-submissions"><div class="admin-work-head"><div><div class="card-kicker">ADMIN MEDIA</div><h3>Received Media</h3></div><span class="request-status">${mediaItems.length} RECEIVED</span></div><div class="organizer-mvp-grid">${mediaItems.length ? mediaItems.map(x => `<article class="organizer-mvp-card"><img src="${x.image}" alt="Media from ${escapeHtml(x.team || 'ICAT')}"><div><span class="card-kicker">${escapeHtml(x.team || 'ICAT')} · ${escapeHtml(x.fileName || 'IMAGE')}</span><p>${escapeHtml(x.note || '')}</p><small>${x.createdAt ? escapeHtml(new Date(x.createdAt).toLocaleString()) : ''}</small><div class="organizer-mvp-actions"><a class="ghost-btn small" href="${x.image}" download="${escapeHtml(x.fileName || 'ICAT-Media.jpg')}">Download</a></div></div></article>`).join('') : '<div class="empty-state"><strong>No admin media received yet</strong><span>Pictures uploaded by Admins will appear here automatically.</span></div>'}</div></section>`;
     }
 
     if (tab === 'inbox') {
@@ -1401,8 +1409,10 @@
         return `<article class="availability-card"><div><div class="card-kicker">WEEK ${m.week}</div><strong>${escapeHtml(m.teamA)} vs ${escapeHtml(m.teamB)}</strong><small>${dateLabel(m.date)} · ${escapeHtml(m.time)} · ${escapeHtml(m.venue)}</small></div><div class="availability-actions"><button class="yes availability-choice ${value === 'yes' ? 'active' : ''}" data-match-id="${m.id}" data-value="yes">Available</button><button class="no availability-choice ${value === 'no' ? 'active' : ''}" data-match-id="${m.id}" data-value="no">Unavailable</button></div></article>`;
       }).join('');
     }
-    if ($('teamWhatsApp')) $('teamWhatsApp').onclick = () => openExternal(`https://wa.me/${String(currentTeam?.phone || '').replace(/\D/g, '')}`);
-    if ($('teamEmail')) $('teamEmail').onclick = () => openExternal(`mailto:${encodeURIComponent(currentTeam?.email || '')}`);
+    const teamContact = document.querySelector('.my-team-panel-v3 .team-contact');
+    if (teamContact) teamContact.classList.toggle('hidden', isMember());
+    if ($('teamWhatsApp')) $('teamWhatsApp').onclick = isMember() ? null : () => openExternal(`https://wa.me/${String(currentTeam?.phone || '').replace(/\D/g, '')}`);
+    if ($('teamEmail')) $('teamEmail').onclick = isMember() ? null : () => openExternal(`mailto:${encodeURIComponent(currentTeam?.email || '')}`);
     bindDynamic();
   }
 

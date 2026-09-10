@@ -2360,3 +2360,41 @@ html.page-restoring [data-tab-panel]{
   .organizer-mvp-card{grid-template-columns:82px minmax(0,1fr)}
   .organizer-mvp-card>img{width:82px;height:82px}
 }
+
+
+/* v3.2.39 — quiet app navigation refinement only.
+   Removes stacked movement/scale effects that created visual noise while
+   keeping a very short opacity handoff. App chrome remains stationary. */
+:root{
+  --icat-page-out:55ms;
+  --icat-page-in:90ms;
+}
+#mainApp .content{
+  transition:opacity 55ms ease-out!important;
+  transform:none!important;
+}
+html.page-leaving #mainApp .content{
+  opacity:.94!important;
+  transform:none!important;
+}
+.view.active{
+  animation:icatQuietPageIn 90ms ease-out both!important;
+}
+@keyframes icatQuietPageIn{
+  from{opacity:.94}
+  to{opacity:1}
+}
+.match-center-tab-panel:not(.hidden),
+[data-tab-panel]:not(.hidden){
+  animation:none!important;
+  transform:none!important;
+}
+html.page-restoring #mainApp .content,
+html.page-restoring .view.active,
+html.page-restoring .match-center-tab-panel,
+html.page-restoring [data-tab-panel]{
+  animation:none!important;
+  transition:none!important;
+  opacity:1!important;
+  transform:none!important;
+}

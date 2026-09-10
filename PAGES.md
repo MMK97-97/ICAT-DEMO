@@ -20,3 +20,5 @@ Admin-only live streaming remains `live-studio.html` and targets the ICAT YouTub
 - `schedule.html` — Member-only team season schedule
 
 - `match-center.html` — Full-page Match Center (Info / Watch / Live / Scorecard).
+
+- `organizer-media.html` — Organizer received admin media
