@@ -2215,3 +2215,78 @@ html.page-restoring .view.active{
   transform:none!important;
   visibility:visible!important;
 }
+
+/* ================================================================
+   ICAT v3.2.35 — PREMIUM TRANSITION REFINEMENT ONLY
+   Keeps top/bottom app chrome stationary. Forward navigation uses a
+   short eased content handoff; browser Back / swipe-back restores
+   instantly through the existing page-restoring guard.
+   ================================================================ */
+:root{
+  --icat-page-ease:cubic-bezier(.22,.72,.24,1);
+  --icat-page-out:150ms;
+  --icat-page-in:260ms;
+}
+
+/* The app shell and permanent navigation never participate in motion. */
+#mainApp.main-app,
+#mainApp .topbar-v3,
+.bottom-nav.bottom-nav-v3{
+  transform:none!important;
+}
+
+/* Forward navigation: move only the scrollable page content. */
+#mainApp .content{
+  transition:
+    opacity var(--icat-page-out) var(--icat-page-ease),
+    transform var(--icat-page-out) var(--icat-page-ease)!important;
+  transform-origin:50% 42%;
+  backface-visibility:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+html.page-leaving #mainApp .content{
+  opacity:.46!important;
+  transform:translate3d(0,-4px,0) scale(.997)!important;
+  pointer-events:none;
+}
+
+/* New page/local view: soft settle rather than a flash or hard slide. */
+.view.active{
+  animation:icatPremiumPageIn var(--icat-page-in) var(--icat-page-ease) both!important;
+}
+@keyframes icatPremiumPageIn{
+  0%{opacity:.58;transform:translate3d(0,7px,0) scale(.997)}
+  58%{opacity:.96}
+  100%{opacity:1;transform:translate3d(0,0,0) scale(1)}
+}
+
+/* In-page panels/tabs settle cleanly without moving the whole shell. */
+.match-center-tab-panel:not(.hidden),
+[data-tab-panel]:not(.hidden){
+  animation:icatPremiumPanelIn 190ms var(--icat-page-ease) both;
+}
+@keyframes icatPremiumPanelIn{
+  from{opacity:.64;transform:translate3d(0,4px,0)}
+  to{opacity:1;transform:none}
+}
+
+/* Back/forward cache and phone swipe-back must be visually immediate. */
+html.page-restoring #mainApp .content,
+html.page-restoring .view.active,
+html.page-restoring .match-center-tab-panel,
+html.page-restoring [data-tab-panel]{
+  animation:none!important;
+  transition:none!important;
+  opacity:1!important;
+  transform:none!important;
+}
+
+@media (prefers-reduced-motion:reduce){
+  #mainApp .content,
+  .view.active,
+  .match-center-tab-panel,
+  [data-tab-panel]{
+    transition:none!important;
+    animation:none!important;
+  }
+}

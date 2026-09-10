@@ -448,7 +448,7 @@
     const go = () => replace ? location.replace(url) : (location.href = url);
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { go(); return; }
     document.documentElement.classList.add('page-leaving');
-    window.setTimeout(go, 115);
+    window.setTimeout(go, 150);
   }
 
   function activateLocal(name, options = {}) {
@@ -704,7 +704,7 @@
       if (key === 'st-petersburg') return hay.includes('st. petersburg') || hay.includes('saint petersburg');
       return hay.includes(key);
     });
-    list.innerHTML = rows.length ? rows.map(v => `<article><b>⌖</b><div><strong>${escapeHtml(v.name)}</strong><small>${escapeHtml(v.city)}</small><p>${escapeHtml(v.note)}</p></div><span>${v.matches} fixtures</span><i>›</i></article>`).join('') : `<div class="empty-state small-empty"><strong>No venues in this filter</strong><span>Try another location.</span></div>`;
+    list.innerHTML = rows.length ? rows.map(v => `<article class="venue-detail-card" data-venue-name="${escapeHtml(v.name)}" role="button" tabindex="0" aria-label="View ${escapeHtml(v.name)} venue details"><b>⌖</b><div><strong>${escapeHtml(v.name)}</strong><small>${escapeHtml(v.city)}</small><p>${escapeHtml(v.note)}</p></div><span>${v.matches} fixtures</span><i>›</i></article>`).join('') : `<div class="empty-state small-empty"><strong>No venues in this filter</strong><span>Try another location.</span></div>`;
   }
 
   function bindVenueFilters() {
@@ -715,6 +715,18 @@
         renderVenueDirectory(btn.dataset.venueFilter || 'all');
       };
     });
+  }
+
+  function openVenueDetails(name) {
+    const venue = state.venues.find(v => v.name === name);
+    if (!venue) { toast('Venue details are unavailable'); return; }
+    const fixtures = state.matches
+      .filter(m => m.venue === venue.name)
+      .slice()
+      .sort((a, b) => `${a.date || ''}${a.time || ''}`.localeCompare(`${b.date || ''}${b.time || ''}`));
+    const fixtureList = fixtures.length ? fixtures.map(m => `<article class="admin-match-card ${escapeHtml(m.status || 'scheduled')}"><div class="admin-match-status"><span>${m.status === 'live' ? 'LIVE NOW' : m.status === 'result' ? 'FINAL' : `WEEK ${m.week || '—'}`}</span><small>${escapeHtml(dateLabel(m.date))} · ${escapeHtml(m.time || '—')}</small></div><div class="admin-match-teams"><strong>${escapeHtml(m.teamA)}</strong><b>VS</b><strong>${escapeHtml(m.teamB)}</strong><small>${escapeHtml(m.overs || 20)} overs</small></div><div class="admin-match-actions"><button class="ghost-btn small venue-open-match" data-match-id="${escapeHtml(m.id)}">Match Center</button></div></article>`).join('') : `<div class="empty-state small-empty"><strong>No fixtures scheduled</strong><span>There are no league matches assigned to this venue yet.</span></div>`;
+    modal('Venue Details', `<section class="dash-card"><div class="section-row"><div><div class="card-kicker">VENUE</div><h3>${escapeHtml(venue.name)}</h3><p>${escapeHtml(venue.city)}</p></div><span class="status-badge">${fixtures.length} FIXTURE${fixtures.length === 1 ? '' : 'S'}</span></div><p>${escapeHtml(venue.note || 'Venue details not provided')}</p></section><div class="admin-match-list">${fixtureList}</div>`);
+    $$('.venue-open-match').forEach(b => b.onclick = () => { closeModal(); openLiveMatchDetails(b.dataset.matchId); });
   }
 
   function renderLeague(tab = 'matches') {
@@ -742,7 +754,7 @@
       p.innerHTML = `<div class="squad-team-grid">${state.teams.map(t => `<article class="squad-team-card"><div class="squad-team-head"><span class="team-badge ${t.color}">${initials(t.name)}</span><div><strong>${escapeHtml(t.name)}</strong><small>Captain · ${escapeHtml(t.captain)}</small></div><span>${(state.squads[t.name] || []).length} players</span></div><div class="squad-preview">${(state.squads[t.name] || []).slice(0, 5).map(p => `<div><b>${escapeHtml(p[0])}</b><small>${escapeHtml(p[1])}</small></div>`).join('')}</div><button class="ghost-btn small view-squad" data-team="${escapeHtml(t.name)}">View Squad</button></article>`).join('')}</div>`;
     }
     if (tab === 'venues') {
-      p.innerHTML = `<section class="venues-page-v3"><div class="venues-head-v3"><div><span>EXPLORE · PLAY · PLAN · TOGETHER</span><h2>Venues</h2></div></div><div class="venue-search-v3">⌕ <span>Search venues in Tampa Bay...</span></div><div class="venue-filter-v3"><button class="active" data-venue-filter="all">All Venues</button><button data-venue-filter="tampa">⌖ Tampa</button><button data-venue-filter="st-petersburg">⌖ St. Petersburg</button><button data-venue-filter="clearwater">⌖ Clearwater</button></div><div class="venue-list-v3">${state.venues.map((v,i)=>`<article><b>⌖</b><div><strong>${escapeHtml(v.name)}</strong><small>${escapeHtml(v.city)}</small><p>${escapeHtml(v.note)}</p></div><span>${v.matches} fixtures</span><i>›</i></article>`).join('')}</div></section>`;
+      p.innerHTML = `<section class="venues-page-v3"><div class="venues-head-v3"><div><span>EXPLORE · PLAY · PLAN · TOGETHER</span><h2>Venues</h2></div></div><div class="venue-search-v3">⌕ <span>Search venues in Tampa Bay...</span></div><div class="venue-filter-v3"><button class="active" data-venue-filter="all">All Venues</button><button data-venue-filter="tampa">⌖ Tampa</button><button data-venue-filter="st-petersburg">⌖ St. Petersburg</button><button data-venue-filter="clearwater">⌖ Clearwater</button></div><div class="venue-list-v3">${state.venues.map((v,i)=>`<article class="venue-detail-card" data-venue-name="${escapeHtml(v.name)}" role="button" tabindex="0" aria-label="View ${escapeHtml(v.name)} venue details"><b>⌖</b><div><strong>${escapeHtml(v.name)}</strong><small>${escapeHtml(v.city)}</small><p>${escapeHtml(v.note)}</p></div><span>${v.matches} fixtures</span><i>›</i></article>`).join('')}</div></section>`;
     }
     bindDynamic();
   }
@@ -1715,6 +1727,10 @@
     $$('.captain-email').forEach(b => b.onclick = () => openExternal(`mailto:${b.dataset.email}`));
     $$('.edit-captain').forEach(b => b.onclick = () => editCaptain(b.dataset.team));
     $$('.view-squad').forEach(b => b.onclick = () => openSquad(b.dataset.team));
+    $$('.venue-detail-card').forEach(card => {
+      card.onclick = () => openVenueDetails(card.dataset.venueName);
+      card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openVenueDetails(card.dataset.venueName); } };
+    });
     $$('.edit-player-role').forEach(b => b.onclick = () => editPlayerRole(b.dataset.team, Number(b.dataset.index)));
     $$('.remove-player').forEach(b => b.onclick = () => removePlayer(b.dataset.team, Number(b.dataset.index)));
     $$('.story-action').forEach(b => { b.onclick = () => openStory(b.dataset.storyIndex); b.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openStory(b.dataset.storyIndex); } }; });
