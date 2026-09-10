@@ -207,7 +207,7 @@
       selected.innings = state.currentInnings === 1 ? '2nd Innings' : '1st Innings';
       selected.matchComplete = !!state.matchComplete;
       sessionStorage.setItem(SCORING_SESSION_KEY, JSON.stringify(selected));
-      window.parent?.postMessage({ type: 'icat-scoring-state', matchId: selected.id, battingTeam: inn.battingTeam, currentInnings: state.currentInnings, matchComplete: !!state.matchComplete }, '*');
+      window.parent?.postMessage({ type: 'icat-scoring-state', matchId: selected.id, battingTeam: inn.battingTeam, currentInnings: state.currentInnings, matchComplete: !!state.matchComplete, scoringSnapshot: { teamA: state.teamA, teamB: state.teamB, currentInnings: state.currentInnings, target: state.target, matchComplete: state.matchComplete, result: state.result, innings: clone(state.innings) } }, '*');
     } catch {}
   }
   const oversText = balls => `${Math.floor((balls || 0) / 6)}.${(balls || 0) % 6}`;
