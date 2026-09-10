@@ -397,7 +397,8 @@
     organizer: { overview: 'organizer.html', teams: 'organizer-teams.html', players: 'organizer-players.html', access: 'organizer-access.html', rosters: 'organizer-rosters.html', schedule: 'organizer-schedule.html', inbox: 'organizer-inbox.html' },
     score: 'live-scoring.html',
     stream: 'live-studio.html',
-    notifications: 'notifications.html'
+    notifications: 'notifications.html',
+    matchCenter: 'match-center.html'
   };
 
   function currentPageConfig() {
@@ -492,6 +493,7 @@
     if (name === 'announcements') renderPublicAnnouncements();
     if (name === 'galleryPublic') renderPublicGallery();
     if (name === 'notifications') renderNotifications();
+    if (name === 'matchCenter') renderMatchCenterPage();
     if (name === 'admin') renderAdmin(options.tab || activeAdminTab);
     if (name === 'organizer') renderOrganizer(options.tab || activeOrganizerTab);
     closeDrawer();
@@ -1454,24 +1456,55 @@
   function openLiveMatchDetails(id, initialTab = '') {
     const m = state.matches.find(x => x.id === id);
     if (!m) return;
+    const tab = initialTab || (m.status === 'live' ? 'live' : 'info');
+    transitionNavigate(`match-center.html?match=${encodeURIComponent(m.id)}&tab=${encodeURIComponent(tab)}`);
+  }
+
+  function matchCenterHeaderMarkup(m) {
     const live = m.status === 'live';
     const result = m.status === 'result';
     const statusLabel = live ? 'LIVE' : result ? 'FINAL' : 'UPCOMING';
-    const body = `<div class="match-center-viewer">
-      <section class="mc-match-header">
-        <div class="mc-title-row"><div><span class="mc-match-kicker">${escapeHtml(state.league.season)} · ${escapeHtml(m.overs || 20)} OVERS</span><h2>${escapeHtml(m.teamA)} <em>vs</em> ${escapeHtml(m.teamB)}</h2></div><span class="mc-status-pill ${live ? 'is-live' : result ? 'is-final' : ''}">${statusLabel}</span></div>
-        <div class="mc-match-meta"><span><b>Series:</b> ${escapeHtml(state.league.name)}</span><i></i><span><b>Venue:</b> ${escapeHtml(m.venue || '—')}</span><i></i><span><b>Date &amp; Time:</b> ${escapeHtml(dateLong(m.date))}, ${escapeHtml(matchTimeLabel(m.time))}</span></div>
-      </section>
-      <div class="match-center-tabs" role="tablist" aria-label="Match Center"><button data-match-center-tab="info" role="tab">Info</button><button data-match-center-tab="watch" role="tab">Watch</button><button data-match-center-tab="live" role="tab">Live</button><button data-match-center-tab="scorecard" role="tab">Scorecard</button></div>
-      <div id="matchCenterTabPanel" class="match-center-tab-panel"></div>
+    return `<section class="mc-match-header">
+      <div class="mc-title-row"><div><span class="mc-match-kicker">${escapeHtml(state.league.season)} · ${escapeHtml(m.overs || 20)} OVERS</span><h2>${escapeHtml(m.teamA)} <em>vs</em> ${escapeHtml(m.teamB)}</h2></div><span class="mc-status-pill ${live ? 'is-live' : result ? 'is-final' : ''}">${statusLabel}</span></div>
+      <div class="mc-match-meta"><span><b>Series:</b> ${escapeHtml(state.league.name)}</span><i></i><span><b>Venue:</b> ${escapeHtml(m.venue || '—')}</span><i></i><span><b>Date &amp; Time:</b> ${escapeHtml(dateLong(m.date))}, ${escapeHtml(matchTimeLabel(m.time))}</span></div>
+    </section>`;
+  }
+
+  function renderMatchCenterPage() {
+    const host = $('matchCenterPage');
+    if (!host) return;
+    const params = new URLSearchParams(location.search);
+    const requestedId = params.get('match') || '';
+    const m = state.matches.find(x => x.id === requestedId) || state.matches.find(x => x.status === 'live') || state.matches[0];
+    if (!m) {
+      host.innerHTML = `<div class="mc-page-toolbar"><button class="mc-page-back" id="matchCenterBack">‹ <span>Matches</span></button><div><span>ICAT</span><strong>Match Center</strong></div></div><div class="mc-empty"><strong>No match available</strong><span>Return to Matches and select a fixture.</span></div>`;
+      if ($('matchCenterBack')) $('matchCenterBack').onclick = () => transitionNavigate(routeUrl('matches', { tab: 'live' }));
+      return;
+    }
+    const defaultTab = ['info','watch','live','scorecard'].includes(params.get('tab')) ? params.get('tab') : (m.status === 'live' ? 'live' : 'info');
+    host.innerHTML = `<div class="match-center-page-shell">
+      <div class="mc-page-toolbar"><button class="mc-page-back" id="matchCenterBack" aria-label="Back to matches">‹ <span>Matches</span></button><div><span>ICAT</span><strong>Match Center</strong></div>${canAdminScoreMatch(m) ? `<button class="mc-page-score" id="matchCenterScore">Live Scoring</button>` : '<span class="mc-page-toolbar-spacer"></span>'}</div>
+      <div class="match-center-viewer match-center-page-viewer">
+        ${matchCenterHeaderMarkup(m)}
+        <div class="match-center-tabs" role="tablist" aria-label="Match Center"><button data-match-center-tab="info" role="tab">Info</button><button data-match-center-tab="watch" role="tab">Watch</button><button data-match-center-tab="live" role="tab">Live</button><button data-match-center-tab="scorecard" role="tab">Scorecard</button></div>
+        <div id="matchCenterTabPanel" class="match-center-tab-panel"></div>
+      </div>
     </div>`;
-    const scoreButton = canAdminScoreMatch(m) ? `<button class="primary-btn" id="modalLiveScore">Open Live Scoring</button>` : `<button class="ghost-btn" id="modalDone">Close</button>`;
-    modal('Match Center', body, scoreButton);
-    document.querySelector('#modalRoot .modal')?.classList.add('match-center-modal');
-    $$('.match-center-tabs button').forEach(b => b.onclick = () => renderMatchCenterTab(m, b.dataset.matchCenterTab));
-    renderMatchCenterTab(m, initialTab || (live ? 'live' : 'info'));
-    if ($('modalLiveScore')) $('modalLiveScore').onclick = () => { closeModal(); loadMatchIntoScorer(m); };
-    if ($('modalDone')) $('modalDone').onclick = closeModal;
+    $$('.bottom-nav.bottom-nav-v3 [data-route]').forEach(b => b.classList.toggle('active', b.dataset.route === 'matches'));
+    const openTab = tab => {
+      renderMatchCenterTab(m, tab);
+      const url = new URL(location.href);
+      url.searchParams.set('match', m.id);
+      url.searchParams.set('tab', tab);
+      history.replaceState({ matchCenter: true, matchId: m.id, tab }, '', `${url.pathname}${url.search}${url.hash}`);
+    };
+    $$('.match-center-tabs button').forEach(b => b.onclick = () => openTab(b.dataset.matchCenterTab));
+    $('matchCenterBack').onclick = () => {
+      if (history.length > 1 && document.referrer) history.back();
+      else transitionNavigate(routeUrl('matches', { tab: m.status === 'result' ? 'recent' : m.status === 'scheduled' ? 'upcoming' : 'live' }));
+    };
+    if ($('matchCenterScore')) $('matchCenterScore').onclick = () => loadMatchIntoScorer(m);
+    openTab(defaultTab);
   }
 
   function openSquad(team) {

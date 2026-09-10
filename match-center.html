@@ -5,11 +5,11 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#02070d" name="theme-color"/>
-<title>ICAT · Team ICAT</title>
+<title>ICAT · Match Center</title>
 <link href="manifest.webmanifest" rel="manifest"/>
 <link href="app.css?v=3.2.32" rel="stylesheet"/>
 </head>
-<body data-page="team-icat" data-view="teamIcat">
+<body data-page="match-center" data-view="matchCenter">
 <div aria-hidden="true" class="splash-screen-v3"><div class="splash-glow"></div><img alt="" src="assets/icat-logo.png"/><div class="splash-mantra">PLAY · COMPETE · CONNECT · GROW</div><div class="splash-location">TAMPA · FLORIDA · BEYOND</div><div class="splash-stumps">▥</div><small>MORE<br/>THAN A GAME</small></div>
 <div class="app-shell" id="app">
 <section class="login-screen icat-login-v3 hidden" id="loginScreen">
@@ -56,7 +56,7 @@
 </aside>
 <div class="drawer-backdrop" id="drawerBackdrop"></div>
 <main class="content" id="content">
-<section class="view home-v3 active" data-view="home">
+<section class="view home-v3" data-view="home">
 <div class="section-row v3-section-title"><div><span class="live-bullet"></span><h3>LIVE SCORES</h3></div><button class="cyan-link" id="viewAllLiveBtn">VIEW ALL ›</button></div>
 <div class="live-match-stack home-live-v3" id="homeLiveMatches"></div>
 <span class="hidden" id="homeLiveCount"></span>
@@ -68,6 +68,9 @@
 <div class="page-title matches-title"><div><div class="eyebrow">MATCH CENTER</div><h2>Matches</h2><p class="page-sub">Live, upcoming and recent fixtures across the league.</p></div><span class="status-badge live" id="matchesLiveBadge">1 LIVE</span></div>
 <div class="segmented premium-tabs" id="matchesTabs"><button class="active" data-match-tab="live">Live</button><button data-match-tab="upcoming">Upcoming</button><button data-match-tab="recent">Recent</button></div>
 <div id="matchesPanel"></div>
+</section>
+<section class="view active match-center-page" data-view="matchCenter">
+<div id="matchCenterPage"></div>
 </section>
 <section class="view" data-view="league">
 <div class="league-hero-v3">
@@ -162,7 +165,7 @@
 </main>
 <nav class="bottom-nav bottom-nav-v3">
 <button data-route="home"><span>⌂</span><small>Home</small></button>
-<button data-route="matches"><span>▣</span><small>Matches</small></button>
+<button class="active" data-route="matches"><span>▣</span><small>Matches</small></button>
 <button class="score-nav" data-route="score"><span class="live-score-nav-icon" aria-hidden="true"><i></i><i></i><i></i></span><small>Live Scoring</small></button>
 <button data-route="league"><span>♕</span><small>Leagues</small></button>
 <button data-route="more"><span>•••</span><small>More</small></button>
