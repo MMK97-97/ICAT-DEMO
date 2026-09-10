@@ -1401,7 +1401,7 @@ body::after{display:none}
    ICAT v3.1 — MULTI-PAGE RENDER + TRANSITION LAYER
    Navigation only. Existing visual design/layout remains unchanged.
    ================================================================ */
-@view-transition { navigation: auto; }
+@view-transition { navigation: none; }
 ::view-transition-old(root),
 ::view-transition-new(root){
   animation-duration:220ms;
@@ -2191,4 +2191,27 @@ html.page-leaving #mainApp .content{
   .mc-page-back{width:34px;padding:0;font-size:18px}
   .mc-page-score{padding:0 5px;font-size:6.2px}
   .mc-page-toolbar-spacer{min-width:60px}
+}
+
+
+/* ================================================================
+   ICAT v3.2.33 — BACK / SWIPE-BACK STABILITY ONLY
+   Disable cross-document browser view transitions because they can
+   animate the restored BFCache snapshot and cause visible flicker/jump
+   on Chrome/Android back gestures. Forward ICAT navigation keeps the
+   existing lightweight content fade.
+   ================================================================ */
+html.page-restoring *,
+html.page-restoring *::before,
+html.page-restoring *::after{
+  animation:none!important;
+  transition:none!important;
+}
+html.page-restoring #mainApp .content,
+html.page-restoring .main-app,
+html.page-restoring .login-screen,
+html.page-restoring .view.active{
+  opacity:1!important;
+  transform:none!important;
+  visibility:visible!important;
 }

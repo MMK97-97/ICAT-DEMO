@@ -425,12 +425,17 @@
   function restoreVisiblePageState() {
     const root = document.documentElement;
     root.classList.remove('page-leaving');
-    root.classList.add('page-ready');
+    root.classList.add('page-ready', 'page-restoring');
     if (document.body) {
       document.body.style.opacity = '';
       document.body.style.visibility = '';
       document.body.style.pointerEvents = '';
     }
+    // Back/forward cache restores should appear immediately with no
+    // second entrance animation. Remove the guard only after two paints.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      root.classList.remove('page-restoring');
+    }));
   }
   window.addEventListener('pageshow', restoreVisiblePageState, { capture: true });
   window.addEventListener('popstate', restoreVisiblePageState, { capture: true });
