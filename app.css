@@ -2230,9 +2230,11 @@ html.page-restoring .view.active{
 
 /* The app shell and permanent navigation never participate in motion. */
 #mainApp.main-app,
-#mainApp .topbar-v3,
-.bottom-nav.bottom-nav-v3{
+#mainApp .topbar-v3{
   transform:none!important;
+}
+.bottom-nav.bottom-nav-v3{
+  transform:translateX(-50%)!important;
 }
 
 /* Forward navigation: move only the scrollable page content. */
