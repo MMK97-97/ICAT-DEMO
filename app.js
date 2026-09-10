@@ -1397,7 +1397,18 @@
   function youtubeVideoId(url) {
     const raw = String(url || '').trim();
     if (!raw) return '';
-    const match = raw.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|live\/))([A-Za-z0-9_-]{6,})/i);
+    if (/^[A-Za-z0-9_-]{6,}$/.test(raw) && !raw.includes('.')) return raw;
+    try {
+      const parsed = new URL(raw);
+      const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+      if (host === 'youtu.be') return parsed.pathname.split('/').filter(Boolean)[0] || '';
+      if (host === 'youtube.com' || host === 'm.youtube.com') {
+        if (parsed.pathname === '/watch') return parsed.searchParams.get('v') || '';
+        const pathMatch = parsed.pathname.match(/^\/(?:embed|live|shorts)\/([A-Za-z0-9_-]{6,})/i);
+        if (pathMatch) return pathMatch[1];
+      }
+    } catch {}
+    const match = raw.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?[^#]*?v=|embed\/|live\/|shorts\/))([A-Za-z0-9_-]{6,})/i);
     return match ? match[1] : '';
   }
 
@@ -1405,12 +1416,12 @@
     const streamUrl = m.youtubeUrl || m.watchUrl || m.streamUrl || '';
     const videoId = youtubeVideoId(streamUrl);
     if (m.status !== 'live') {
-      return `<div class="mc-watch-shell"><div class="mc-watch-state"><span class="mc-watch-icon">▶</span><div><small>ICAT LIVE</small><strong>Broadcast not live yet</strong><p>Watch will become available here when this match has an active ICAT YouTube stream.</p></div></div></div>`;
+      return `<div class="mc-watch-shell"><div class="mc-watch-state"><span class="mc-watch-icon">▶</span><div><small>ICAT LIVE</small><strong>Broadcast not live yet</strong><p>Watch will become available here when this match has an active live stream.</p></div></div></div>`;
     }
-    if (videoId) {
-      return `<div class="mc-watch-shell"><div class="mc-video-frame"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0" title="ICAT live match" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><div class="mc-watch-footer"><div><span class="mc-live-dot"></span><strong>LIVE ON ICAT</strong><small>${escapeHtml(YOUTUBE_CHANNEL_HANDLE)}</small></div><button class="ghost-btn" id="mcWatchYoutube">Open YouTube</button></div></div>`;
+    if (!videoId) {
+      return `<div class="mc-watch-shell"><div class="mc-watch-state is-live"><span class="mc-watch-icon">▶</span><div><small><span class="mc-live-dot"></span> LIVE MATCH</small><strong>Live video is not connected yet</strong><p>The match Admin needs to attach this match's public YouTube live/watch URL in Match Center. Once connected, everyone can watch here inside ICAT.</p></div></div></div>`;
     }
-    return `<div class="mc-watch-shell"><div class="mc-watch-state is-live"><span class="mc-watch-icon">▶</span><div><small><span class="mc-live-dot"></span> LIVE ON ICAT</small><strong>Watch ${escapeHtml(m.teamA)} vs ${escapeHtml(m.teamB)}</strong><p>The live broadcast opens directly on the official ${escapeHtml(YOUTUBE_CHANNEL_HANDLE)} YouTube channel.</p><button class="primary-btn" id="mcWatchYoutube">Watch Live</button></div></div></div>`;
+    return `<div class="mc-watch-shell"><div class="mc-video-frame"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0&modestbranding=1" title="${escapeHtml(m.teamA)} vs ${escapeHtml(m.teamB)} live stream" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div><div class="mc-watch-footer"><div><span class="mc-live-dot"></span><strong>WATCHING LIVE IN ICAT</strong><small>${escapeHtml(m.teamA)} vs ${escapeHtml(m.teamB)}</small></div></div></div>`;
   }
 
   function renderMatchScorecardTab(m) {
@@ -1438,10 +1449,9 @@
     else if (tab === 'live') panel.innerHTML = renderMatchCommentaryTab(m);
     else if (tab === 'scorecard') panel.innerHTML = renderMatchScorecardTab(m);
     else panel.innerHTML = renderMatchInfoTab(m);
-    if ($('mcWatchYoutube')) $('mcWatchYoutube').onclick = () => watchLiveStream();
   }
 
-  function openLiveMatchDetails(id) {
+  function openLiveMatchDetails(id, initialTab = '') {
     const m = state.matches.find(x => x.id === id);
     if (!m) return;
     const live = m.status === 'live';
@@ -1459,7 +1469,7 @@
     modal('Match Center', body, scoreButton);
     document.querySelector('#modalRoot .modal')?.classList.add('match-center-modal');
     $$('.match-center-tabs button').forEach(b => b.onclick = () => renderMatchCenterTab(m, b.dataset.matchCenterTab));
-    renderMatchCenterTab(m, live ? 'live' : 'info');
+    renderMatchCenterTab(m, initialTab || (live ? 'live' : 'info'));
     if ($('modalLiveScore')) $('modalLiveScore').onclick = () => { closeModal(); loadMatchIntoScorer(m); };
     if ($('modalDone')) $('modalDone').onclick = closeModal;
   }
@@ -1512,6 +1522,7 @@
         <label>Decision<select id="mcDecision"><option value="bat" ${m.decision === 'bat' ? 'selected' : ''}>Bat</option><option value="bowl" ${m.decision === 'bowl' ? 'selected' : ''}>Bowl</option></select></label>
         <label>Scorer<input id="mcScorer" value="${escapeHtml(m.scorer || state.user.name)}"></label>
         <label class="span2">Venue Details<textarea id="mcVenueDetails" rows="2" placeholder="Ground / pitch / access details">${escapeHtml(m.venueDetails || matchVenueNote(m))}</textarea></label>
+        <label class="span2">Live Watch URL<input id="mcWatchUrl" type="url" value="${escapeHtml(m.youtubeUrl || m.watchUrl || '')}" placeholder="Public YouTube live/watch URL for this match"></label>
       </div>
       <div class="section-row"><h3>Playing XI · ${escapeHtml(m.teamA)}</h3><span class="muted xi-count-a">${selectedA.size}/11 selected</span></div>
       <div class="roster-select">${squadA.map(p => `<label class="check-player"><input type="checkbox" class="xi-a" value="${escapeHtml(p[0])}" ${selectedA.has(p[0]) ? 'checked' : ''}> ${escapeHtml(p[0])}</label>`).join('')}</div>
@@ -1538,6 +1549,7 @@
       m.umpire1 = $('mcUmpire1').value.trim();
       m.umpire2 = $('mcUmpire2').value.trim();
       m.venueDetails = $('mcVenueDetails').value.trim();
+      m.youtubeUrl = $('mcWatchUrl').value.trim();
       m.overs = Math.max(1, Number($('mcOvers').value) || 20);
       m.tossWinner = $('mcToss').value;
       m.decision = $('mcDecision').value;
@@ -1655,7 +1667,7 @@
   function bindDynamic() {
     bindVenueFilters();
     $$('.open-live-match').forEach(b => b.onclick = () => openLiveMatchDetails(b.dataset.matchId));
-    $$('.watch-live-match').forEach(b => b.onclick = () => watchLiveStream());
+    $$('.watch-live-match').forEach(b => b.onclick = () => openLiveMatchDetails(b.dataset.matchId, 'watch'));
     $$('.score-live-match,.score-match').forEach(b => b.onclick = () => { const m = state.matches.find(x => x.id === b.dataset.matchId); if (m) loadMatchIntoScorer(m); });
     $$('.edit-match').forEach(b => b.onclick = () => openMatchCenter(b.dataset.matchId));
     $$('.availability-btn').forEach(b => b.onclick = () => availabilityModal(b.dataset.matchId));
@@ -1678,9 +1690,9 @@
     $$('.resolve-admin-message').forEach(b => b.onclick = () => { const m=(state.adminMessages||[]).find(x=>x.id===b.dataset.messageId); if(m){m.status='resolved';save();renderOrganizer('inbox');toast('Message resolved');} });
   }
 
-  function watchLiveStream() {
-    const popup = window.open(YOUTUBE_LIVE_URL, '_blank', 'noopener,noreferrer');
-    if (!popup) window.location.href = YOUTUBE_LIVE_URL;
+  function watchLiveStream(matchId) {
+    const m = state.matches.find(x => x.id === matchId);
+    if (m) openLiveMatchDetails(m.id, 'watch');
   }
 
   function openExternal(url) { window.location.href = url; }
