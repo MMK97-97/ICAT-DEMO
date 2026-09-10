@@ -1,0 +1,12 @@
+{
+  "name": "icat-web",
+  "version": "3.2.40",
+  "private": true,
+  "description": "ICAT web application Render deployment wrapper",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
