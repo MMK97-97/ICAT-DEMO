@@ -202,6 +202,7 @@
       { title: 'Ground timing update', date: 'Sep 5', text: 'Morning matches must complete warm-up before 8:20 AM.' },
       { title: 'MVP submissions open', date: 'Sep 3', text: 'Upload one official MVP photo after each completed match.' }
     ],
+    notifications: [],
     availability: { m4: 'yes', m6: 'unknown' },
     memberAvailability: {},
     teamAvailability: {
@@ -285,6 +286,9 @@
       });
       merged.playerDirectory = { ...demoDirectory, ...clone(demo.playerDirectory), ...(saved.playerDirectory || {}) };
       merged.adminMessages = Array.isArray(saved.adminMessages) ? saved.adminMessages : clone(demo.adminMessages);
+      merged.notifications = Array.isArray(saved.notifications) ? saved.notifications : clone(demo.notifications || []);
+      merged.mediaDrafts = Array.isArray(saved.mediaDrafts) ? saved.mediaDrafts : clone(demo.mediaDrafts || []);
+      merged.playerRequests = Array.isArray(saved.playerRequests) ? saved.playerRequests : clone(demo.playerRequests || []);
       merged.organizer = { ...clone(demo.organizer), ...(saved.organizer || {}) };
       return merged;
     } catch {
@@ -292,6 +296,87 @@
     }
   }
   function save() { persistentStore.set(STORAGE, JSON.stringify(state)); }
+
+  function addAppNotification({ key = '', title = 'ICAT Update', text = '', audience = 'all', players = [], team = '', kind = 'update' } = {}) {
+    state.notifications ||= [];
+    if (key && state.notifications.some(n => n && n.key === key)) return false;
+    state.notifications.push({
+      id: `nt${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      key,
+      title,
+      text,
+      audience,
+      players: Array.isArray(players) ? [...new Set(players.filter(Boolean))] : [],
+      team,
+      kind,
+      createdAt: new Date().toISOString()
+    });
+    return true;
+  }
+
+  function notificationVisibleToCurrentUser(n) {
+    if (!n) return false;
+    if (!n.audience || n.audience === 'all') return true;
+    if (n.audience === 'organizer') return isOrganizer();
+    if (n.audience === 'admins') return isAdmin();
+    if (n.audience === 'team') return !isOrganizer() && !!n.team && n.team === state.user?.team;
+    if (n.audience === 'players') return !isOrganizer() && (n.players || []).includes(state.user?.fullName);
+    return false;
+  }
+
+  function announcementVisibleToCurrentUser(a) {
+    if (!a) return false;
+    const audience = a.audience || 'all';
+    if (audience === 'admins') return isAdmin();
+    return true;
+  }
+
+  function currentNotifications() {
+    const dynamic = (state.notifications || []).filter(notificationVisibleToCurrentUser).slice().sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    const standard = (state.announcements || []).filter(announcementVisibleToCurrentUser).map((a, i) => ({ id: a.id || `announcement_${i}`, title: a.title, text: a.text, date: a.date, kind: 'announcement', createdAt: a.createdAt || '' }));
+    return [...dynamic, ...standard];
+  }
+
+  function refreshNotificationBadge() {
+    const count = currentNotifications().length;
+    $$('.bell-btn b').forEach(b => {
+      b.textContent = count > 99 ? '99+' : String(count);
+      b.classList.toggle('hidden', count === 0);
+    });
+  }
+
+  function notifyRosterUpdated(team, count, reason = 'updated') {
+    addAppNotification({
+      key: `roster_${team}_${Date.now()}_${Math.random().toString(36).slice(2,5)}`,
+      title: `Roster Updated · ${team}`,
+      text: `${team} roster has been ${reason}. ${count} player${count === 1 ? '' : 's'} currently registered.`,
+      audience: 'all',
+      kind: 'roster'
+    });
+  }
+
+  function matchParticipants(m) {
+    if (!m) return [];
+    const a = Array.isArray(m.rosterA) && m.rosterA.length ? m.rosterA : (state.squads[m.teamA] || []).slice(0, 11).map(p => p[0]);
+    const b = Array.isArray(m.rosterB) && m.rosterB.length ? m.rosterB : (state.squads[m.teamB] || []).slice(0, 11).map(p => p[0]);
+    return [...new Set([...a, ...b].filter(Boolean))];
+  }
+
+  function notifyMatchCompleted(m) {
+    if (!m || m.completionNotified) return;
+    const players = matchParticipants(m);
+    if (!players.length) return;
+    addAppNotification({
+      key: `match_complete_${m.id}`,
+      title: `Match Completed · ${m.teamA} vs ${m.teamB}`,
+      text: m.result || `Final: ${m.scoreA || '—'} · ${m.scoreB || '—'}. Thanks for playing.`,
+      audience: 'players',
+      players,
+      kind: 'match'
+    });
+    m.completionNotified = true;
+  }
+
   function initials(name) { return String(name || '').split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase(); }
   function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
   function dateLabel(d) { return new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' }); }
@@ -394,7 +479,7 @@
     privacy: 'privacy-policy.html',
     terms: 'terms.html',
     admin: { matches: 'admin-matches.html', squads: 'admin-squads.html', availability: 'admin-availability.html', schedule: 'admin-schedule.html', contact: 'admin-contact.html' },
-    organizer: { overview: 'organizer.html', teams: 'organizer-teams.html', players: 'organizer-players.html', access: 'organizer-access.html', rosters: 'organizer-rosters.html', schedule: 'organizer-schedule.html', inbox: 'organizer-inbox.html' },
+    organizer: { overview: 'organizer.html', teams: 'organizer-teams.html', players: 'organizer-players.html', access: 'organizer-access.html', rosters: 'organizer-rosters.html', schedule: 'organizer-schedule.html', announcements: 'organizer-announcements.html', inbox: 'organizer-inbox.html' },
     score: 'live-scoring.html',
     stream: 'live-studio.html',
     notifications: 'notifications.html',
@@ -589,6 +674,7 @@
     if ($('drawerProfileTeam')) $('drawerProfileTeam').childNodes[0].nodeValue = profileTeam;
     if ($('drawerProfileAvatar')) $('drawerProfileAvatar').textContent = profileInitials;
     if ($('drawerProfileLabel')) $('drawerProfileLabel').textContent = isOrganizer() ? 'ICAT ORGANIZER' : isAdmin() ? 'ICAT CAPTAIN / ADMIN' : 'ICAT PLAYER';
+    refreshNotificationBadge();
     document.body.dataset.role = role;
   }
 
@@ -862,7 +948,7 @@
 
     const p = $('adminPanel');
     if (tab === 'squads') {
-      p.innerHTML = `<section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">SQUAD MANAGEMENT</div><h3>Edit registered squad</h3></div><div class="admin-work-actions"><select id="squadTeamSelect">${state.teams.map(t => `<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('')}</select><button id="adminRequestPlayerBtn" class="primary-btn small">Request New Player</button></div></div><div id="adminSquadEditor"></div></section><section class="admin-work-card requests-card"><div class="admin-work-head"><div><div class="card-kicker">COMMITTEE REQUESTS</div><h3>Player add requests</h3></div></div><div id="playerRequestList"></div></section>`;
+      p.innerHTML = `<section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">SQUAD MANAGEMENT</div><h3>Edit registered squad</h3></div><div class="admin-work-actions"><select id="squadTeamSelect">${state.teams.map(t => `<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('')}</select><button id="adminRequestPlayerBtn" class="primary-btn small">Request New Player</button></div></div><div id="adminSquadEditor"></div></section><section class="admin-work-card requests-card"><div class="admin-work-head"><div><div class="card-kicker">ORGANIZER APPROVAL</div><h3>Player requests</h3></div></div><div id="playerRequestList"></div></section>`;
       $('squadTeamSelect').value = state.user.team;
       renderAdminSquadEditor();
       renderPlayerRequests();
@@ -905,16 +991,13 @@
     $$('#organizerTabs button').forEach(b => b.classList.toggle('active', b.dataset.organizerTab === tab));
     const p = $('organizerPanel');
     if (!p) return;
-    const admins = state.teams.filter(t => state.adminAccess?.[t.email] === true);
-    const openMessages = (state.adminMessages || []).filter(x => (x.status || 'open') !== 'resolved').length + state.playerRequests.length;
+    const pendingPlayerRequests = (state.playerRequests || []).filter(x => !x.status || x.status === 'pending').length;
+    const openMessages = (state.adminMessages || []).filter(x => (x.status || 'open') !== 'resolved').length + pendingPlayerRequests;
     if ($('organizerKpis')) $('organizerKpis').innerHTML = `
-      <div class="admin-kpi"><span>TEAMS</span><strong>${state.teams.length}</strong><small>Registered</small></div>
-      <div class="admin-kpi"><span>PLAYERS</span><strong>${Object.values(state.squads).reduce((a,b)=>a+b.length,0)}</strong><small>Across all squads</small></div>
-      <div class="admin-kpi"><span>ADMINS</span><strong>${admins.length}</strong><small>Granted access</small></div>
-      <div class="admin-kpi"><span>INBOX</span><strong>${openMessages}</strong><small>Open items</small></div>`;
+      <div class="admin-kpi organizer-inbox-kpi"><span>INBOX</span><strong>${openMessages}</strong><small>Open items</small></div>`;
 
     if (tab === 'overview') {
-      p.innerHTML = `<div class="organizer-overview-grid"><section class="organizer-action-grid"><button data-organizer-shortcut="teams"><b>♟</b><strong>Add / Manage Teams</strong><small>League team directory</small></button><button data-organizer-shortcut="players"><b>♙+</b><strong>Add Players</strong><small>Assign players to squads</small></button><button data-organizer-shortcut="access"><b>⚙</b><strong>Admin Access</strong><small>Grant or revoke captain access</small></button><button data-organizer-shortcut="rosters"><b>XL</b><strong>Roster Excel Upload</strong><small>Organizer-only roster import</small></button><button data-organizer-shortcut="schedule"><b>▣</b><strong>Schedule Excel Upload</strong><small>Update league fixtures</small></button><button data-organizer-shortcut="inbox"><b>✉</b><strong>Admin Inbox</strong><small>Requests, complaints, feedback</small></button></section><section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">ADMIN DIRECTORY</div><h3>Reach Captains / Admins</h3></div></div><div class="captain-admin-grid compact-org">${state.teams.map(t => organizerAdminCard(t)).join('')}</div></section></div>`;
+      p.innerHTML = `<div class="organizer-overview-grid"><section class="organizer-action-grid"><button data-organizer-shortcut="teams"><b>♟</b><strong>Add / Manage Teams</strong><small>League team directory</small></button><button data-organizer-shortcut="players"><b>♙+</b><strong>Add Players</strong><small>Assign players to squads</small></button><button data-organizer-shortcut="access"><b>⚙</b><strong>Admin Access</strong><small>Grant or revoke captain access</small></button><button data-organizer-shortcut="rosters"><b>XL</b><strong>Roster Excel Upload</strong><small>Organizer-only roster import</small></button><button data-organizer-shortcut="schedule"><b>▣</b><strong>Schedule Excel Upload</strong><small>Update league fixtures</small></button><button data-organizer-shortcut="announcements"><b>!</b><strong>Announcements</strong><small>Send to everyone or admins</small></button><button data-organizer-shortcut="inbox"><b>✉</b><strong>Admin Inbox</strong><small>Requests, complaints, feedback</small></button></section><section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">ADMIN DIRECTORY</div><h3>Reach Captains / Admins</h3></div></div><div class="captain-admin-grid compact-org">${state.teams.map(t => organizerAdminCard(t)).join('')}</div></section></div>`;
     }
     if (tab === 'teams') {
       p.innerHTML = `<section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">LEAGUE TEAMS</div><h3>Team Management</h3></div><button class="primary-btn small" id="organizerAddTeamBtn">+ Add Team</button></div><div class="organizer-team-list">${state.teams.map(t => `<article><div class="captain-avatar ${t.color}">${initials(t.name)}</div><div><strong>${escapeHtml(t.name)}</strong><small>Captain · ${escapeHtml(t.captain)} · ${(state.squads[t.name]||[]).length} players</small></div><div><button class="ghost-btn small captain-email" data-email="${escapeHtml(t.email)}">Email</button><button class="ghost-btn small captain-wa" data-phone="${escapeHtml(t.phone)}">WhatsApp</button></div></article>`).join('')}</div></section>`;
@@ -939,12 +1022,99 @@
       p.innerHTML = `<section class="excel-import-card"><div class="excel-import-icon">▣</div><div class="excel-import-copy"><div class="card-kicker">LEAGUE SCHEDULE</div><h3>Schedule Excel Upload</h3><p>Import or update league fixtures. Existing matches not included in the workbook are preserved.</p><div class="excel-columns">Columns: <b>Home Team</b>, <b>Away Team</b>, <b>Date</b>, <b>Time</b>, <b>Venue</b></div></div><div class="excel-import-controls"><label class="file-drop-btn">Choose Excel<input type="file" id="scheduleExcelFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"></label><a class="ghost-btn small template-link" href="templates/ICAT-League-Schedule-Template.xlsx" download>Download Template</a></div><div class="excel-preview" id="scheduleImportPreview"><span>No file selected</span></div></section>`;
       $('scheduleExcelFile').onchange = handleScheduleExcel;
     }
+    if (tab === 'announcements') {
+      const history = (state.announcements || []).slice().sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+      p.innerHTML = `<section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">LEAGUE COMMUNICATION</div><h3>Announcements</h3></div></div><div class="form-grid two"><label>To<select id="organizerAnnouncementAudience"><option value="all">Everyone</option><option value="admins">Admins</option></select></label><label>Subject<input id="organizerAnnouncementSubject" placeholder="Announcement subject"></label><label class="span2">Announcement<textarea id="organizerAnnouncementBody" rows="6" placeholder="Write the announcement"></textarea></label></div><button class="primary-btn full" id="sendOrganizerAnnouncementBtn">Send Announcement</button></section><section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">SENT ANNOUNCEMENTS</div><h3>History</h3></div></div><div class="organizer-inbox-list">${history.length ? history.map(a => `<article class="announcement"><strong>${escapeHtml(a.title || 'Announcement')}</strong><small>${escapeHtml((a.audience || 'all') === 'admins' ? 'ADMINS' : 'EVERYONE')} · ${escapeHtml(a.date || '')}${a.text ? ` · ${escapeHtml(a.text)}` : ''}</small></article>`).join('') : '<div class="empty-state"><strong>No announcements yet</strong></div>'}</div></section>`;
+      $('sendOrganizerAnnouncementBtn').onclick = sendOrganizerAnnouncement;
+    }
+
     if (tab === 'inbox') {
-      const playerReqs = state.playerRequests.slice().reverse().map(r => ({ id:r.id, type:'request', subject:`Player Addition · ${r.name}`, message:`${r.email} · ${r.phone}${r.note ? ' · '+r.note : ''}`, from:'Captain/Admin', team:r.team, status:'open', createdAt:r.createdAt }));
-      const messages = [...(state.adminMessages||[]), ...playerReqs].sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
-      p.innerHTML = `<section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">ORGANIZER INBOX</div><h3>Admin Requests · Complaints · Feedback</h3></div><span class="request-status">${messages.filter(m=>(m.status||'open')!=='resolved').length} OPEN</span></div><div class="organizer-inbox-list">${messages.length ? messages.map(messageCard).join('') : '<div class="empty-state"><strong>Inbox clear</strong></div>'}</div></section>`;
+      const requests = (state.playerRequests || []).slice().reverse();
+      const messages = (state.adminMessages || []).slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+      const mvpSubmissions = (state.mediaDrafts || []).filter(x => x && x.kind === 'image' && x.image).slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+      const pendingCount = requests.filter(r => !r.status || r.status === 'pending').length + messages.filter(m => (m.status || 'open') !== 'resolved').length;
+      p.innerHTML = `
+        ${mvpSubmissions.length ? `<section class="admin-work-card organizer-mvp-submissions"><div class="admin-work-head"><div><div class="card-kicker">MVP SUBMISSIONS</div><h3>Admin MVP Pictures</h3></div><span class="request-status">${mvpSubmissions.length} RECEIVED</span></div><div class="organizer-mvp-grid">${mvpSubmissions.map(organizerMvpCard).join('')}</div></section>` : ''}
+        <section class="admin-work-card"><div class="admin-work-head"><div><div class="card-kicker">ORGANIZER INBOX</div><h3>Requests · Complaints · Feedback</h3></div><span class="request-status">${pendingCount} OPEN</span></div>
+          ${requests.length ? `<div class="organizer-inbox-list organizer-player-request-list">${requests.map(playerApprovalCard).join('')}</div>` : ''}
+          <div class="organizer-inbox-list">${messages.length ? messages.map(messageCard).join('') : (!requests.length ? '<div class="empty-state"><strong>Inbox clear</strong></div>' : '')}</div>
+        </section>`;
     }
     bindDynamic();
+  }
+
+  function playerApprovalCard(r) {
+    const action = r.action === 'remove' ? 'REMOVE PLAYER' : 'ADD PLAYER';
+    const status = r.status || 'pending';
+    const roleName = r.role ? ` · ${escapeHtml(r.role)}` : '';
+    return `<article class="org-message-card request"><div class="org-message-top"><span>${action}</span><b class="message-status ${escapeHtml(status)}">${escapeHtml(status.toUpperCase())}</b></div><h4>${escapeHtml(r.name || 'Player')}</h4><p>${escapeHtml(r.email || '')}${r.phone ? ` · ${escapeHtml(r.phone)}` : ''}${roleName}${r.note ? ` · ${escapeHtml(r.note)}` : ''}</p><small>${escapeHtml(r.team || '')} · Requested by ${escapeHtml(r.requestedBy || 'Captain/Admin')} · ${r.createdAt ? escapeHtml(new Date(r.createdAt).toLocaleString()) : ''}</small>${isOrganizer() && status === 'pending' ? `<div class="request-approval-actions"><button class="ghost-btn small reject-player-request" data-request-id="${escapeHtml(r.id)}">Reject</button><button class="primary-btn small approve-player-request" data-request-id="${escapeHtml(r.id)}">Approve</button></div>` : ''}</article>`;
+  }
+
+  function organizerMvpCard(x) {
+    const id = x.id || x.createdAt || '';
+    const posted = !!x.instagramPosted;
+    return `<article class="organizer-mvp-card"><img src="${x.image}" alt="MVP submission from ${escapeHtml(x.team || 'ICAT')}"><div><span class="card-kicker">${escapeHtml(x.team || 'ICAT')} · MVP</span><p>${escapeHtml(x.note || '')}</p><small>${x.createdAt ? escapeHtml(new Date(x.createdAt).toLocaleString()) : ''}</small><div class="organizer-mvp-actions"><a class="ghost-btn small" href="${x.image}" download="${escapeHtml(x.fileName || 'ICAT-MVP.jpg')}">Download</a>${posted ? '<span class="access-state on">INSTAGRAM POSTED</span>' : `<button class="primary-btn small mark-mvp-instagram" data-mvp-id="${escapeHtml(id)}">Mark Posted on Instagram</button>`}</div></div></article>`;
+  }
+
+  function approvePlayerRequest(id) {
+    if (!isOrganizer()) return;
+    const r = (state.playerRequests || []).find(x => x.id === id);
+    if (!r || (r.status && r.status !== 'pending')) return;
+    state.squads[r.team] ||= [];
+    if (r.action === 'remove') {
+      const idx = state.squads[r.team].findIndex(p => p[0] === r.name);
+      if (idx >= 0) state.squads[r.team].splice(idx, 1);
+      const meta = state.playerDirectory?.[r.name];
+      if (meta?.email) state.adminAccess[meta.email] = false;
+      if (state.playerDirectory) delete state.playerDirectory[r.name];
+      r.status = 'approved';
+      r.resolvedAt = new Date().toISOString();
+      notifyRosterUpdated(r.team, state.squads[r.team].length, 'updated after an approved player removal');
+      save();
+      renderOrganizer('inbox');
+      toast('Player removal approved');
+      return;
+    }
+    if (!state.squads[r.team].some(p => p[0].toLowerCase() === String(r.name || '').toLowerCase())) {
+      state.squads[r.team].push([r.name, r.role || 'Batter']);
+      state.playerDirectory ||= {};
+      state.playerDirectory[r.name] = { email: r.email || '', phone: r.phone || '', team: r.team };
+    }
+    r.status = 'approved';
+    r.resolvedAt = new Date().toISOString();
+    notifyRosterUpdated(r.team, state.squads[r.team].length, 'updated after an approved player addition');
+    save();
+    renderOrganizer('inbox');
+    toast('Player addition approved');
+  }
+
+  function rejectPlayerRequest(id) {
+    if (!isOrganizer()) return;
+    const r = (state.playerRequests || []).find(x => x.id === id);
+    if (!r || (r.status && r.status !== 'pending')) return;
+    r.status = 'rejected';
+    r.resolvedAt = new Date().toISOString();
+    save();
+    renderOrganizer('inbox');
+    toast('Player request rejected');
+  }
+
+  function markMvpPostedOnInstagram(id) {
+    if (!isOrganizer()) return;
+    const x = (state.mediaDrafts || []).find(item => String(item.id || item.createdAt || '') === String(id));
+    if (!x || x.instagramPosted) return;
+    x.instagramPosted = true;
+    x.instagramPostedAt = new Date().toISOString();
+    addAppNotification({
+      key: `mvp_instagram_${x.id || x.createdAt}`,
+      title: 'MVP Posted on Instagram',
+      text: `${x.team || 'ICAT'} MVP has been posted on ICAT Instagram.`,
+      audience: 'all',
+      kind: 'mvp'
+    });
+    save();
+    renderOrganizer('inbox');
+    toast('Instagram notification sent to everyone');
   }
 
   function organizerAdminCard(t, withAccess = false) {
@@ -1001,6 +1171,28 @@
     root.innerHTML = `<div class="squad-editor-list">${squad.map((p,i)=>{const d=state.playerDirectory?.[p[0]]||{};return `<div class="squad-editor-row"><div class="squad-player-index">${String(i+1).padStart(2,'0')}</div><div class="squad-player-copy"><strong>${escapeHtml(p[0])}</strong><small>${escapeHtml(p[1])}${d.email?` · ${escapeHtml(d.email)}`:''}${d.phone?` · ${escapeHtml(d.phone)}`:''}</small></div></div>`}).join('')}</div>`;
   }
 
+  function sendOrganizerAnnouncement() {
+    if (!isOrganizer()) { toast('Organizer access is required'); return; }
+    const audience = String($('organizerAnnouncementAudience')?.value || 'all');
+    const subject = String($('organizerAnnouncementSubject')?.value || '').trim();
+    const text = String($('organizerAnnouncementBody')?.value || '').trim();
+    if (!subject) { toast('Add an announcement subject'); return; }
+    if (!text) { toast('Write the announcement'); return; }
+    state.announcements ||= [];
+    state.announcements.unshift({
+      id: `ann${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+      title: subject,
+      text,
+      audience: audience === 'admins' ? 'admins' : 'all',
+      date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+      createdAt: new Date().toISOString()
+    });
+    save();
+    refreshNotificationBadge();
+    renderOrganizer('announcements');
+    toast(audience === 'admins' ? 'Announcement sent to admins' : 'Announcement sent to everyone');
+  }
+
   function organizerAddTeam() {
     if(!isOrganizer()){toast('Organizer access is required');return;}
     modal('Add League Team', `<div class="form-grid two"><label>Team Name<input id="otName" placeholder="Team name"></label><label>Captain Name<input id="otCaptain" placeholder="Captain full name"></label><label>Email<input id="otEmail" type="email" placeholder="captain@email.com"></label><label>WhatsApp / Contact<input id="otPhone" placeholder="+1..."></label></div>`, `<button class="ghost-btn" id="otCancel">Cancel</button><button class="primary-btn" id="otSave">Add Team</button>`);
@@ -1025,7 +1217,7 @@
       if(!name){toast('Player full name is required');return;}
       state.squads[team] ||= [];
       if(state.squads[team].some(p=>p[0].toLowerCase()===name.toLowerCase())){toast('Player already exists in this squad');return;}
-      state.squads[team].push([name,roleName]); state.playerDirectory[name]={email,phone,team}; save(); closeModal(); renderOrganizer('players'); toast('Player added');
+      state.squads[team].push([name,roleName]); state.playerDirectory[name]={email,phone,team}; notifyRosterUpdated(team, state.squads[team].length, 'updated'); save(); refreshNotificationBadge(); closeModal(); renderOrganizer('players'); toast('Player added · everyone notified');
     };
   }
 
@@ -1122,13 +1314,38 @@
   }
   function handleRosterExcel(e){
     if(!isOrganizer()){toast('Organizer access is required');return;}
-    const file=e.target.files?.[0]; if(!file)return; const team=$('rosterImportTeam').value; const preview=$('rosterImportPreview'); preview.innerHTML='<span>Reading workbook…</span>';
-    readExcelRows(file,rows=>{const parsed=rows.map(r=>({name:String(getRowValue(r,['Player Name','Full Name','Name','Player'])).trim(),role:String(getRowValue(r,['Role','Player Role'])).trim()||'Batter',email:String(getRowValue(r,['Email','Email Address'])).trim(),phone:String(getRowValue(r,['Contact','Phone','Mobile','Contact Number'])).trim()})).filter(r=>r.name);if(!parsed.length){preview.innerHTML='<span>No valid players found. Check the template headers.</span>';return;} preview.innerHTML=`<div class="excel-preview-head"><strong>${parsed.length} players ready for ${escapeHtml(team)}</strong><button class="primary-btn small" id="confirmRosterImport">Replace Roster</button></div><div class="excel-preview-rows">${parsed.slice(0,8).map(r=>`<div><b>${escapeHtml(r.name)}</b><span>${escapeHtml(r.role)}${r.email?` · ${escapeHtml(r.email)}`:''}</span></div>`).join('')}${parsed.length>8?`<small>+ ${parsed.length-8} more</small>`:''}</div>`; $('confirmRosterImport').onclick=()=>{state.squads[team]=parsed.map(r=>[r.name,r.role]);parsed.forEach(r=>state.playerDirectory[r.name]={email:r.email,phone:r.phone,team});save();toast(`${parsed.length} roster players imported`);renderOrganizer('rosters');};});
+    const file=e.target.files?.[0];
+    if(!file)return;
+    const team=$('rosterImportTeam').value;
+    const preview=$('rosterImportPreview');
+    preview.innerHTML='<span>Reading workbook…</span>';
+    readExcelRows(file,rows=>{
+      const parsed=rows.map(r=>({
+        name:String(getRowValue(r,['Player Name','Full Name','Name','Player'])).trim(),
+        role:String(getRowValue(r,['Role','Player Role'])).trim()||'Batter',
+        email:String(getRowValue(r,['Email','Email Address'])).trim(),
+        phone:String(getRowValue(r,['Contact','Phone','Mobile','Contact Number'])).trim()
+      })).filter(r=>r.name);
+      if(!parsed.length){preview.innerHTML='<span>No valid players found. Check the template headers.</span>';return;}
+      preview.innerHTML=`<div class="excel-preview-head"><strong>${parsed.length} players ready for ${escapeHtml(team)}</strong><button class="primary-btn small" id="confirmRosterImport">Replace Roster</button></div><div class="excel-preview-rows">${parsed.slice(0,8).map(r=>`<div><b>${escapeHtml(r.name)}</b><span>${escapeHtml(r.role)}${r.email?` · ${escapeHtml(r.email)}`:''}</span></div>`).join('')}${parsed.length>8?`<small>+ ${parsed.length-8} more</small>`:''}</div>`;
+      $('confirmRosterImport').onclick=()=>{
+        const previous = state.squads[team] || [];
+        const nextNames = new Set(parsed.map(r=>r.name));
+        previous.forEach(p=>{ if(!nextNames.has(p[0])) { const meta=state.playerDirectory?.[p[0]]; if(meta?.email) state.adminAccess[meta.email]=false; if(state.playerDirectory) delete state.playerDirectory[p[0]]; } });
+        state.squads[team]=parsed.map(r=>[r.name,r.role]);
+        parsed.forEach(r=>state.playerDirectory[r.name]={email:r.email,phone:r.phone,team});
+        notifyRosterUpdated(team, parsed.length, 'updated');
+        save();
+        refreshNotificationBadge();
+        toast(`${parsed.length} roster players imported · everyone notified`);
+        renderOrganizer('rosters');
+      };
+    });
   }
   function handleScheduleExcel(e){
     if(!isOrganizer()){toast('Organizer access is required');return;}
     const file=e.target.files?.[0]; if(!file)return; const preview=$('scheduleImportPreview'); preview.innerHTML='<span>Reading workbook…</span>';
-    readExcelRows(file,rows=>{const parsed=rows.map(r=>({date:excelDate(getRowValue(r,['Date','Match Date'])),time:excelTime(getRowValue(r,['Time','Match Time'])),venue:String(getRowValue(r,['Venue','Ground'])).trim(),teamA:String(getRowValue(r,['Home Team','Team A','Team1'])).trim(),teamB:String(getRowValue(r,['Away Team','Team B','Team2'])).trim()})).filter(r=>r.date&&r.teamA&&r.teamB&&r.venue);if(!parsed.length){preview.innerHTML='<span>No valid matches found. Check the template headers.</span>';return;}preview.innerHTML=`<div class="excel-preview-head"><strong>${parsed.length} fixtures ready</strong><button class="primary-btn small" id="confirmScheduleImport">Import / Update</button></div><div class="excel-preview-rows">${parsed.slice(0,6).map(r=>`<div><b>${escapeHtml(r.teamA)} vs ${escapeHtml(r.teamB)}</b><span>${escapeHtml(r.date)} · ${escapeHtml(r.time)} · ${escapeHtml(r.venue)}</span></div>`).join('')}</div>`;$('confirmScheduleImport').onclick=()=>{let nextWeek=Math.max(0,...state.matches.map(x=>Number(x.week)||0))+1;parsed.forEach((m,i)=>{const idx=state.matches.findIndex(x=>x.status==='scheduled'&&x.teamA===m.teamA&&x.teamB===m.teamB);if(idx>=0){state.matches[idx]={...state.matches[idx],date:m.date,time:m.time,venue:m.venue};}else{state.matches.push({id:`xlsx${Date.now()}_${i}`,week:nextWeek++,date:m.date,time:m.time,venue:m.venue,leagueId:'fwwl',teamA:m.teamA,teamB:m.teamB,overs:20,status:'scheduled',tossWinner:'',decision:'bat',rosterA:[],rosterB:[]});}});save();toast(`${parsed.length} schedule rows imported`);renderOrganizer('schedule');};});
+    readExcelRows(file,rows=>{const parsed=rows.map(r=>({date:excelDate(getRowValue(r,['Date','Match Date'])),time:excelTime(getRowValue(r,['Time','Match Time'])),venue:String(getRowValue(r,['Venue','Ground'])).trim(),teamA:String(getRowValue(r,['Home Team','Team A','Team1'])).trim(),teamB:String(getRowValue(r,['Away Team','Team B','Team2'])).trim()})).filter(r=>r.date&&r.teamA&&r.teamB&&r.venue);if(!parsed.length){preview.innerHTML='<span>No valid matches found. Check the template headers.</span>';return;}preview.innerHTML=`<div class="excel-preview-head"><strong>${parsed.length} fixtures ready</strong><button class="primary-btn small" id="confirmScheduleImport">Import / Update</button></div><div class="excel-preview-rows">${parsed.slice(0,6).map(r=>`<div><b>${escapeHtml(r.teamA)} vs ${escapeHtml(r.teamB)}</b><span>${escapeHtml(r.date)} · ${escapeHtml(r.time)} · ${escapeHtml(r.venue)}</span></div>`).join('')}</div>`;$('confirmScheduleImport').onclick=()=>{let nextWeek=Math.max(0,...state.matches.map(x=>Number(x.week)||0))+1;parsed.forEach((m,i)=>{const idx=state.matches.findIndex(x=>x.status==='scheduled'&&x.teamA===m.teamA&&x.teamB===m.teamB);if(idx>=0){state.matches[idx]={...state.matches[idx],date:m.date,time:m.time,venue:m.venue};}else{state.matches.push({id:`xlsx${Date.now()}_${i}`,week:nextWeek++,date:m.date,time:m.time,venue:m.venue,leagueId:'fwwl',teamA:m.teamA,teamB:m.teamB,overs:20,status:'scheduled',tossWinner:'',decision:'bat',rosterA:[],rosterB:[]});}});addAppNotification({key:`schedule_update_${Date.now()}_${Math.random().toString(36).slice(2,5)}`,title:'League Schedule Updated',text:`${parsed.length} fixture${parsed.length === 1 ? '' : 's'} ${parsed.length === 1 ? 'was' : 'were'} added or updated by the organizer.`,audience:'all',kind:'schedule'});save();refreshNotificationBadge();toast(`${parsed.length} schedule rows imported · everyone notified`);renderOrganizer('schedule');};});
   }
 
   function renderAdminSquadEditor() {
@@ -1136,14 +1353,14 @@
     if (!select || !$('adminSquadEditor')) return;
     const team = select.value;
     const squad = state.squads[team] || [];
-    $('adminSquadEditor').innerHTML = `<div class="squad-editor-list">${squad.map((p, i) => `<div class="squad-editor-row"><div class="squad-player-index">${String(i + 1).padStart(2, '0')}</div><div class="squad-player-copy"><strong>${escapeHtml(p[0])}</strong><small>${escapeHtml(p[1])}</small></div><button class="text-btn edit-player-role" data-team="${escapeHtml(team)}" data-index="${i}">Edit Role</button><button class="danger-mini remove-player" data-team="${escapeHtml(team)}" data-index="${i}">Remove</button></div>`).join('')}</div>`;
+    $('adminSquadEditor').innerHTML = `<div class="squad-editor-list">${squad.map((p, i) => `<div class="squad-editor-row"><div class="squad-player-index">${String(i + 1).padStart(2, '0')}</div><div class="squad-player-copy"><strong>${escapeHtml(p[0])}</strong><small>${escapeHtml(p[1])}</small></div><button class="text-btn edit-player-role" data-team="${escapeHtml(team)}" data-index="${i}">Edit Role</button><button class="danger-mini request-remove-player" data-team="${escapeHtml(team)}" data-index="${i}">Request Removal</button></div>`).join('')}</div>`;
     bindDynamic();
   }
 
   function renderPlayerRequests() {
     if (!$('playerRequestList')) return;
     const requests = state.playerRequests.slice().reverse();
-    $('playerRequestList').innerHTML = requests.length ? requests.map(r => `<div class="request-row"><div><strong>${escapeHtml(r.name)}</strong><small>${escapeHtml(r.team)} · ${escapeHtml(r.email)} · ${escapeHtml(r.phone)}</small></div><span class="request-status">EMAILED</span></div>`).join('') : `<div class="empty-state small-empty"><strong>No pending requests</strong><span>Use Request New Player to email the committee.</span></div>`;
+    $('playerRequestList').innerHTML = requests.length ? requests.map(r => `<div class="request-row"><div><strong>${r.action === 'remove' ? 'Remove · ' : 'Add · '}${escapeHtml(r.name)}</strong><small>${escapeHtml(r.team)}${r.email ? ` · ${escapeHtml(r.email)}` : ''}${r.phone ? ` · ${escapeHtml(r.phone)}` : ''}</small></div><span class="request-status">${escapeHtml((r.status || 'pending').toUpperCase())}</span></div>`).join('') : `<div class="empty-state small-empty"><strong>No player requests</strong><span>Additions and removals require organizer approval.</span></div>`;
   }
 
   function getNextMatchForTeam(team) {
@@ -1221,7 +1438,7 @@
   function renderPublicAnnouncements() {
     const root = $('publicAnnouncementsList');
     if (!root) return;
-    const items = Array.isArray(state.announcements) ? state.announcements : [];
+    const items = Array.isArray(state.announcements) ? state.announcements.filter(announcementVisibleToCurrentUser) : [];
     root.innerHTML = items.length ? items.map(a => `<article class="announcement"><strong>${escapeHtml(a.title)}</strong><small>${escapeHtml(a.date)} · ${escapeHtml(a.text)}</small></article>`).join('') : `<div class="empty-state"><strong>No announcements yet</strong></div>`;
   }
 
@@ -1239,9 +1456,10 @@
   function renderNotifications() {
     const root = $('notificationsFeed');
     if (!root) return;
-    const items = Array.isArray(state.announcements) ? state.announcements : [];
+    const items = currentNotifications();
     const roleLabel = isOrganizer() ? 'Organizer' : isAdmin() ? 'Admin' : 'Member';
-    root.innerHTML = `<div class="card-kicker">${roleLabel.toUpperCase()} NOTIFICATIONS</div>${items.length ? items.map(a => `<article class="announcement"><strong>${escapeHtml(a.title)}</strong><small>${escapeHtml(a.date)} · ${escapeHtml(a.text)}</small></article>`).join('') : `<div class="empty-state"><strong>No notifications</strong></div>`}`;
+    root.innerHTML = `<div class="card-kicker">${roleLabel.toUpperCase()} NOTIFICATIONS</div>${items.length ? items.map(a => { const date = a.createdAt ? new Date(a.createdAt).toLocaleString() : (a.date || ''); return `<article class="announcement"><strong>${escapeHtml(a.title)}</strong><small>${escapeHtml(date)}${date && a.text ? ' · ' : ''}${escapeHtml(a.text || '')}</small></article>`; }).join('') : `<div class="empty-state"><strong>No notifications</strong></div>`}`;
+    refreshNotificationBadge();
   }
 
   function renderMedia() {
@@ -1303,10 +1521,16 @@
       const note = String($('privateMediaNotes')?.value || '').trim();
       if (!fileMeta) { toast('Select a media file'); return; }
       if (!note) { toast('Add media notes'); return; }
-      state.mediaDrafts.push({ team: state.user.team, fileName: fileMeta.name, kind: fileMeta.kind, fileType: fileMeta.type, fileSize: fileMeta.size, image: imageData, note, createdAt: new Date().toISOString(), published: false });
+      if (fileMeta.kind === 'image' && !imageData) { toast('Wait for the image preview to finish loading'); return; }
+      const mediaItem = { id:`media${Date.now()}`, team: state.user.team, fileName: fileMeta.name, kind: fileMeta.kind, fileType: fileMeta.type, fileSize: fileMeta.size, image: imageData, note, createdAt: new Date().toISOString(), published: false, organizerReceived: fileMeta.kind === 'image', instagramPosted: false };
+      state.mediaDrafts.push(mediaItem);
+      if (fileMeta.kind === 'image') {
+        addAppNotification({ key:`mvp_received_${mediaItem.id}`, title:`MVP Picture Received · ${state.user.team}`, text:`${state.user.fullName} uploaded an MVP picture for organizer review.`, audience:'organizer', kind:'mvp' });
+      }
       try { save(); } catch (e) { state.mediaDrafts.pop(); toast('Media is too large to save on this device'); return; }
+      refreshNotificationBadge();
       renderMedia();
-      toast('Media saved privately');
+      toast(fileMeta.kind === 'image' ? 'MVP picture sent to organizer' : 'Media saved privately');
     };
     bindDynamic();
   }
@@ -1673,19 +1897,21 @@
 
   function requestPlayer() {
     if (!isAdmin()) { toast('Captain / Admin access is required'); return; }
-    modal('Request Committee to Add Player', `<div class="request-intro"><strong>Committee approval required</strong><span>This creates a committee email with the player credentials and stores the request in your admin queue.</span></div><div class="form-grid two"><label>Full Name<input id="rpName" placeholder="Player full name"></label><label>Email<input id="rpEmail" type="email" placeholder="player@email.com"></label><label>Contact Number<input id="rpPhone" placeholder="+1..."></label><label>Team<select id="rpTeam">${state.teams.map(t => `<option ${t.name === state.user.team ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}</select></label><label class="span2">Note<textarea id="rpNote" rows="3" placeholder="Optional note to committee"></textarea></label></div>`, `<button class="ghost-btn" id="rpCancel">Cancel</button><button class="primary-btn" id="rpSend">Create Committee Email</button>`);
+    modal('Request Organizer to Add Player', `<div class="request-intro"><strong>Organizer approval required</strong><span>Admins cannot add players directly. This request is sent to the organizer for approval.</span></div><div class="form-grid two"><label>Full Name<input id="rpName" placeholder="Player full name"></label><label>Email<input id="rpEmail" type="email" placeholder="player@email.com"></label><label>Contact Number<input id="rpPhone" placeholder="+1..."></label><label>Team<input id="rpTeam" value="${escapeHtml(state.user.team)}" disabled></label><label class="span2">Note<textarea id="rpNote" rows="3" placeholder="Optional note to organizer"></textarea></label></div>`, `<button class="ghost-btn" id="rpCancel">Cancel</button><button class="primary-btn" id="rpSend">Send Request</button>`);
     $('rpCancel').onclick = closeModal;
     $('rpSend').onclick = () => {
       const name = $('rpName').value.trim(), email = $('rpEmail').value.trim(), phone = $('rpPhone').value.trim(), team = $('rpTeam').value, note = $('rpNote').value.trim();
       if (!name || !email || !phone) { toast('Full name, email and contact are required'); return; }
-      const req = { id: `pr${Date.now()}`, name, email, phone, team, note, createdAt: new Date().toISOString() };
-      state.playerRequests.push(req); save();
+      const req = { id: `pr${Date.now()}`, action: 'add', status: 'pending', name, email, phone, team, note, requestedBy: state.user.fullName, createdAt: new Date().toISOString() };
+      state.playerRequests.push(req);
+      addAppNotification({ key:`player_request_${req.id}`, title:`Player Request · ${team}`, text:`${state.user.fullName} requested to add ${name}.`, audience:'organizer', kind:'request' });
+      save(); refreshNotificationBadge();
       const subject = `Player Addition Request · ${team} · ${name}`;
-      const body = `ICAT Committee,\n\nPlease review this request to add a new player to ${team}.\n\nFull Name: ${name}\nEmail: ${email}\nContact: ${phone}\nTeam: ${team}\n${note ? `Note: ${note}\n` : ''}\nRequested by: ${state.user.fullName}\nLeague: ${state.league.name}\n\nThank you.`;
+      const body = `ICAT Organizer,\n\nPlease review this request to add a new player to ${team}.\n\nFull Name: ${name}\nEmail: ${email}\nContact: ${phone}\nTeam: ${team}\n${note ? `Note: ${note}\n` : ''}\nRequested by: ${state.user.fullName}\nLeague: ${state.league.name}\n\nThank you.`;
       closeModal();
-      openExternal(`mailto:${COMMITTEE_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+      openExternal(`mailto:${state.organizer?.email || ORGANIZER_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
       setTimeout(() => { if (isAdmin() && document.querySelector('[data-view="admin"].active')) renderAdmin('squads'); }, 250);
-      toast('Committee email prepared');
+      toast('Player request sent to organizer');
     };
   }
 
@@ -1703,10 +1929,23 @@
     $('eprSave').onclick = () => { state.squads[team][index][1] = $('eprRole').value; save(); closeModal(); renderAdmin('squads'); toast('Player role updated'); };
   }
 
-  function removePlayer(team, index) {
-    const p = state.squads[team]?.[index]; if (!p) return;
-    if (!confirm(`Remove ${p[0]} from ${team} in this demo?`)) return;
-    state.squads[team].splice(index, 1); save(); renderAdminSquadEditor(); toast('Player removed from demo squad');
+  function requestPlayerRemoval(team, index) {
+    if (!isAdmin()) { toast('Captain / Admin access is required'); return; }
+    if (team !== state.user.team) { toast('You can request changes only for your own team'); return; }
+    const p = state.squads[team]?.[index];
+    if (!p) return;
+    const already = (state.playerRequests || []).some(r => r.action === 'remove' && r.status === 'pending' && r.team === team && r.name === p[0]);
+    if (already) { toast('A removal request is already pending for this player'); return; }
+    const meta = state.playerDirectory?.[p[0]] || {};
+    const req = { id:`pr${Date.now()}`, action:'remove', status:'pending', name:p[0], role:p[1], email:meta.email || '', phone:meta.phone || '', team, note:'Player removal requested by team Admin', requestedBy:state.user.fullName, createdAt:new Date().toISOString() };
+    state.playerRequests ||= [];
+    state.playerRequests.push(req);
+    addAppNotification({ key:`player_request_${req.id}`, title:`Player Removal Request · ${team}`, text:`${state.user.fullName} requested to remove ${p[0]}.`, audience:'organizer', kind:'request' });
+    save();
+    refreshNotificationBadge();
+    renderAdminSquadEditor();
+    renderPlayerRequests();
+    toast('Removal request sent to organizer');
   }
 
   function uploadMvp() {
@@ -1732,7 +1971,7 @@
       card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openVenueDetails(card.dataset.venueName); } };
     });
     $$('.edit-player-role').forEach(b => b.onclick = () => editPlayerRole(b.dataset.team, Number(b.dataset.index)));
-    $$('.remove-player').forEach(b => b.onclick = () => removePlayer(b.dataset.team, Number(b.dataset.index)));
+    $$('.request-remove-player').forEach(b => b.onclick = () => requestPlayerRemoval(b.dataset.team, Number(b.dataset.index)));
     $$('.story-action').forEach(b => { b.onclick = () => openStory(b.dataset.storyIndex); b.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openStory(b.dataset.storyIndex); } }; });
     $$('.league-go-live').forEach(b => b.onclick = () => route('matches', { tab: 'live' }));
     $$('.stats-category-btn').forEach(b => b.onclick = () => renderStatsPanel(b.dataset.statsCategory));
@@ -1742,6 +1981,9 @@
     $$('.organizer-admin-change').forEach(b => b.onclick = () => organizerAdminPicker(b.dataset.team));
     $$('.organizer-admin-remove').forEach(b => b.onclick = () => organizerRemoveAdmin(b.dataset.team));
     $$('.resolve-admin-message').forEach(b => b.onclick = () => { const m=(state.adminMessages||[]).find(x=>x.id===b.dataset.messageId); if(m){m.status='resolved';save();renderOrganizer('inbox');toast('Message resolved');} });
+    $$('.approve-player-request').forEach(b => b.onclick = () => approvePlayerRequest(b.dataset.requestId));
+    $$('.reject-player-request').forEach(b => b.onclick = () => rejectPlayerRequest(b.dataset.requestId));
+    $$('.mark-mvp-instagram').forEach(b => b.onclick = () => markMvpPostedOnInstagram(b.dataset.mvpId));
   }
 
   function watchLiveStream(matchId) {
@@ -1801,10 +2043,14 @@
     if (data.battingTeam && [m.teamA, m.teamB].includes(data.battingTeam)) m.battingTeam = data.battingTeam;
     if (Number.isInteger(data.currentInnings)) m.currentInnings = data.currentInnings;
     m.innings = data.currentInnings === 1 ? '2nd Innings' : '1st Innings';
-    if (data.matchComplete) m.status = 'result';
-    else m.status = 'live';
+    const wasComplete = m.status === 'result';
+    if (data.matchComplete) {
+      m.status = 'result';
+      if (!wasComplete) notifyMatchCompleted(m);
+    } else m.status = 'live';
     if (data.scoringSnapshot?.innings) m.scoringSnapshot = data.scoringSnapshot;
     save();
+    refreshNotificationBadge();
     if (currentPageConfig().view === 'score' && !canAdminScoreMatch(m)) {
       sessionStorage.removeItem(SCORING_SESSION_KEY);
       toast('Scoring control has moved to the batting team admin');

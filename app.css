@@ -2292,3 +2292,71 @@ html.page-restoring [data-tab-panel]{
     animation:none!important;
   }
 }
+
+
+/* v3.2.37 — Organizer workflow refinements only */
+.organizer-view .organizer-hero{
+  min-height:132px;
+  padding:16px 20px;
+  border-radius:22px;
+  margin-bottom:8px;
+}
+.organizer-view .organizer-hero h2{
+  margin:4px 0 0;
+  font-size:clamp(28px,4vw,36px);
+  line-height:.98;
+}
+.organizer-view .organizer-shield{
+  width:64px;
+  height:74px;
+  font-size:26px;
+}
+.organizer-view #organizerKpis{
+  grid-template-columns:minmax(0,220px);
+  margin:8px 0;
+}
+.organizer-view #organizerKpis .organizer-inbox-kpi{
+  min-height:76px;
+}
+.request-approval-actions,.organizer-mvp-actions{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+.organizer-mvp-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.organizer-mvp-card{
+  display:grid;
+  grid-template-columns:110px minmax(0,1fr);
+  gap:12px;
+  padding:10px;
+  border:1px solid rgba(0,199,255,.28);
+  border-radius:18px;
+  background:#031b29;
+}
+.organizer-mvp-card>img{
+  width:110px;
+  height:110px;
+  object-fit:cover;
+  border-radius:14px;
+}
+.organizer-mvp-card p{margin:6px 0;color:#dbe8ef;line-height:1.45}
+.organizer-mvp-card small{color:#7f97a6}
+.organizer-mvp-actions .ghost-btn,.organizer-mvp-actions .primary-btn{min-height:34px;text-decoration:none}
+.message-status.approved{color:#53f1b5;border-color:rgba(83,241,181,.35)}
+.message-status.rejected{color:#ff7183;border-color:rgba(255,113,131,.35)}
+.message-status.pending{color:#ffd35d;border-color:rgba(255,211,93,.35)}
+@media(max-width:640px){
+  .organizer-view .organizer-hero{min-height:104px;padding:12px 14px;border-radius:18px}
+  .organizer-view .organizer-hero h2{font-size:26px}
+  .organizer-view .organizer-shield{width:52px;height:60px;font-size:21px}
+  .organizer-view #organizerKpis{grid-template-columns:minmax(0,150px)}
+  .organizer-mvp-grid{grid-template-columns:1fr}
+  .organizer-mvp-card{grid-template-columns:82px minmax(0,1fr)}
+  .organizer-mvp-card>img{width:82px;height:82px}
+}

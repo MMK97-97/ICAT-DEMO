@@ -9,6 +9,7 @@ Existing v3.1 pages are preserved. Added organizer and admin-contact pages:
 - `organizer-access.html` — Grant/revoke captain admin access
 - `organizer-rosters.html` — Organizer-only roster Excel upload
 - `organizer-schedule.html` — League schedule Excel upload
+- `organizer-announcements.html` — Organizer announcements to everyone or admins
 - `organizer-inbox.html` — Admin requests, complaints and feedback
 
 Admin-only live streaming remains `live-studio.html` and targets the ICAT YouTube channel `https://www.youtube.com/@ICAT-FT20`.

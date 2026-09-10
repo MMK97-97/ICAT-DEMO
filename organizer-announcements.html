@@ -5,11 +5,11 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#02070d" name="theme-color"/>
-<title>ICAT · Squads</title>
+<title>ICAT · Organizer Announcements</title>
 <link href="manifest.webmanifest" rel="manifest"/>
 <link href="app.css?v=3.2.38" rel="stylesheet"/>
 </head>
-<body data-page="squads" data-tab="squads" data-view="league">
+<body data-page="organizer-announcements" data-tab="announcements" data-view="organizer">
 <div aria-hidden="true" class="splash-screen-v3"><div class="splash-glow"></div><img alt="" src="assets/icat-logo.png"/><div class="splash-mantra">PLAY · COMPETE · CONNECT · GROW</div><div class="splash-location">TAMPA · FLORIDA · BEYOND</div><div class="splash-stumps">▥</div><small>MORE<br/>THAN A GAME</small></div>
 <div class="app-shell" id="app">
 <section class="login-screen icat-login-v3 hidden" id="loginScreen">
@@ -69,7 +69,7 @@
 <div class="segmented premium-tabs" id="matchesTabs"><button class="active" data-match-tab="live">Live</button><button data-match-tab="upcoming">Upcoming</button><button data-match-tab="recent">Recent</button></div>
 <div id="matchesPanel"></div>
 </section>
-<section class="view active" data-view="league">
+<section class="view" data-view="league">
 <div class="league-hero-v3">
 <img alt="FWCWL" src="assets/fwwcl-logo.png"/>
 <div><span>WINTER CRICKET · STRONGER TOGETHER</span><h2>FLORIDA WEST<br/>COAST WINTER<br/>LEAGUE</h2><p>⌖ TAMPA, FL</p><strong>WINTER 2026</strong><small>BIGGER MATCHES. STRONGER COMMUNITY.</small></div>
@@ -82,7 +82,7 @@
 <div class="segmented premium-tabs admin-tabs" id="adminTabs"><button data-admin-tab="squads">Squad Edit</button><button data-admin-tab="availability">Availability</button><button class="active" data-admin-tab="matches">Match Ops</button><button data-admin-tab="contact">Contact Organizer</button></div>
 <div id="adminPanel"></div>
 </section>
-<section class="view organizer-view" data-view="organizer">
+<section class="view organizer-view active" data-view="organizer">
 <div class="admin-hero organizer-hero"><div><div class="eyebrow">LEAGUE ORGANIZER ACCESS</div><h2>Organizer Console</h2></div><div class="admin-shield organizer-shield">O</div></div>
 <div class="admin-kpi-grid" id="organizerKpis"></div>
 <div class="segmented premium-tabs organizer-tabs" id="organizerTabs"><button class="active" data-organizer-tab="overview">Overview</button><button data-organizer-tab="teams">Teams</button><button data-organizer-tab="players">Players</button><button data-organizer-tab="access">Admin Access</button><button data-organizer-tab="rosters">Roster Excel</button><button data-organizer-tab="schedule">Schedule Excel</button><button data-organizer-tab="announcements">Announcements</button><button data-organizer-tab="inbox">Inbox</button></div>
@@ -161,10 +161,10 @@
 </section>
 </main>
 <nav class="bottom-nav bottom-nav-v3">
-<button data-route="home"><span>⌂</span><small>Home</small></button>
+<button class="active" data-route="home"><span>⌂</span><small>Home</small></button>
 <button data-route="matches"><span>▣</span><small>Matches</small></button>
 <button class="score-nav" data-route="score"><span class="live-score-nav-icon" aria-hidden="true"><i></i><i></i><i></i></span><small>Live Scoring</small></button>
-<button class="active" data-route="league"><span>♕</span><small>Leagues</small></button>
+<button data-route="league"><span>♕</span><small>Leagues</small></button>
 <button data-route="more"><span>•••</span><small>More</small></button>
 </nav>
 </div>
