@@ -1314,3 +1314,14 @@ body{background:radial-gradient(500px 220px at 50% 0,rgba(0,199,255,.07),transpa
 @media(max-width:640px){
   .desk{height:100dvh!important;padding:3px 0!important}.matchup-panel{border-radius:11px!important}.main-score{font-size:30px!important}.rate-strip span{font-size:5px!important}.rate-strip b{font-size:6px!important}.merged-batter-table thead th{font-size:5.8px!important}.bowler-stats span{font-size:5px!important}.bowler-stats strong{font-size:9.5px!important}.timeline-title{font-size:5.8px!important}.over-group span{font-size:7px!important}.scoring-pad.equal-number-pad .score-key.run-key{font-size:clamp(23px,8vw,31px)!important}.extras-menu-key,.wicket-key,.wd-key,.end-key{font-size:clamp(9px,3vw,12px)!important}.undo-button{font-size:7px!important}
 }
+
+/* ICAT web v3.2.26 — viewport adaptation guard only. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;min-width:0;}
+body,.page,.panel,.scoring-panel{max-width:100%;min-width:0;}
+button,input,select,textarea{max-width:100%;}
+@media(max-width:640px){
+  .brand-copy strong{font-size:clamp(9px,3.2vw,12px)}
+  .match-score{font-size:clamp(29px,10vw,42px)}
+  .metric-label,.batter-table th{font-size:clamp(5.5px,1.8vw,7px)}
+  .metric-value,.batter-table td{font-size:clamp(7px,2.4vw,10px)}
+}

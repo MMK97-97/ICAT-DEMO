@@ -2,6 +2,52 @@
   'use strict';
 
   const STORAGE_KEY = 'mk97-scoring-desk-v10';
+
+
+  // Android persistence adapter. Browser builds continue to use localStorage. Android mirrors
+  // the same keys to the app-private SQLite database via ICATNative and migrates existing values
+  // automatically on first read.
+  const browserPersistentStorage = window.localStorage;
+  const persistentStore = {
+    nativeAvailable() {
+      return !!(window.ICATNative && typeof window.ICATNative.dbGet === 'function' && typeof window.ICATNative.dbSet === 'function');
+    },
+    get(key) {
+      try {
+        if (this.nativeAvailable()) {
+          const nativeValue = window.ICATNative.dbGet(String(key));
+          if (nativeValue !== null && nativeValue !== undefined) {
+            const value = String(nativeValue);
+            if (browserPersistentStorage.getItem(key) !== value) browserPersistentStorage.setItem(key, value);
+            return value;
+          }
+          const legacy = browserPersistentStorage.getItem(key);
+          if (legacy !== null) window.ICATNative.dbSet(String(key), String(legacy));
+          return legacy;
+        }
+      } catch (error) {
+        console.warn('ICAT scoring database read fallback', error);
+      }
+      return browserPersistentStorage.getItem(key);
+    },
+    set(key, value) {
+      const text = String(value);
+      browserPersistentStorage.setItem(key, text);
+      try {
+        if (this.nativeAvailable()) window.ICATNative.dbSet(String(key), text);
+      } catch (error) {
+        console.warn('ICAT scoring database write fallback', error);
+      }
+    },
+    remove(key) {
+      browserPersistentStorage.removeItem(key);
+      try {
+        if (this.nativeAvailable() && typeof window.ICATNative.dbRemove === 'function') window.ICATNative.dbRemove(String(key));
+      } catch (error) {
+        console.warn('ICAT scoring database remove fallback', error);
+      }
+    }
+  };
   const $ = id => document.getElementById(id);
   const $$ = sel => [...document.querySelectorAll(sel)];
   const clone = obj => JSON.parse(JSON.stringify(obj));
@@ -57,7 +103,7 @@
 
   function loadState() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = persistentStore.get(STORAGE_KEY);
       if (!raw) return freshState();
       const saved = JSON.parse(raw);
       if (!saved || saved.version !== 10) return freshState();
@@ -73,6 +119,11 @@
   }
 
   let state = loadState();
+  if (persistentStore.get(STORAGE_KEY) === null) {
+    const initialCopy = clone(state);
+    initialCopy.history = [];
+    persistentStore.set(STORAGE_KEY, JSON.stringify(initialCopy));
+  }
 
   function importSelectedICATMatch() {
     try {
@@ -97,7 +148,7 @@
         innings: [createInnings(battingTeam, bowlingTeam, battingPlayers, bowlingPlayers, oversLimit)],
         history: []
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      persistentStore.set(STORAGE_KEY, JSON.stringify(state));
       match.forceImport = false;
       sessionStorage.setItem('icat_selected_match', JSON.stringify(match));
     } catch (error) {
@@ -117,10 +168,10 @@
   const SCORING_SESSION_KEY = 'icat_selected_match';
 
   function authorizedAdminTeam() {
-    if (localStorage.getItem(APP_ROLE_KEY) !== 'admin') return '';
+    if (persistentStore.get(APP_ROLE_KEY) !== 'admin') return '';
     try {
-      const appState = JSON.parse(localStorage.getItem(APP_STATE_KEY) || '{}');
-      const email = String(localStorage.getItem(APP_LOGIN_EMAIL_KEY) || '').trim().toLowerCase();
+      const appState = JSON.parse(persistentStore.get(APP_STATE_KEY) || '{}');
+      const email = String(persistentStore.get(APP_LOGIN_EMAIL_KEY) || '').trim().toLowerCase();
       const team = (appState.teams || []).find(t => String(t.email || '').toLowerCase() === email);
       return team?.name || '';
     } catch { return ''; }
@@ -175,7 +226,7 @@
   function save() {
     const copy = clone(state);
     copy.history = [];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(copy));
+    persistentStore.set(STORAGE_KEY, JSON.stringify(copy));
     syncParentScoringState();
   }
 
@@ -957,7 +1008,7 @@
     if (!requireAuthorizedScorer()) return;
     if (!confirm('Reset the entire match?')) return;
     state = freshState();
-    localStorage.removeItem(STORAGE_KEY);
+    persistentStore.remove(STORAGE_KEY);
     save();
     render();
     closeMenu();

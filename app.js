@@ -231,7 +231,7 @@
   if (persistentStore.get(STORAGE) === null) persistentStore.set(STORAGE, JSON.stringify(state));
   let role = persistentStore.get(ROLE_STORAGE) || 'member';
   let activeMatchTab = 'live';
-  let activeLeagueTab = 'overview';
+  let activeLeagueTab = 'matches';
   let activeAdminTab = 'matches';
   let activeOrganizerTab = 'overview';
   let activeStatsCategory = 'batting';
@@ -412,7 +412,7 @@
     const target = PAGE_ROUTES[name];
     if (!target) return 'home.html';
     if (typeof target === 'string') return target;
-    const tab = options.tab || (name === 'matches' ? 'live' : name === 'league' ? 'overview' : name === 'media' ? 'highlights' : name === 'admin' ? 'matches' : name === 'organizer' ? 'overview' : '');
+    const tab = options.tab || (name === 'matches' ? 'live' : name === 'league' ? 'matches' : name === 'media' ? 'highlights' : name === 'admin' ? 'matches' : name === 'organizer' ? 'overview' : '');
     return target[tab] || Object.values(target)[0];
   }
 

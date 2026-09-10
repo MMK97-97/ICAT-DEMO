@@ -1725,3 +1725,127 @@ html:not(.page-leaving) .login-screen{opacity:1;transform:none;pointer-events:au
   .content{width:calc(100% - 8px)}
   .bottom-nav-v3 button small{font-size:6.2px!important}
 }
+
+
+/* ================================================================
+   ICAT v3.2.27 — VIEWPORT SHELL + LEAGUE HEADER PATCH ONLY
+   Keeps the standard bottom navigation stationary. The page content
+   between the app header and bottom navigation is the only scroll area.
+   League Overview is removed in markup/route logic; league hero logo
+   sizing/padding is tightened without changing the rest of the UI.
+   ================================================================ */
+
+/* Stable application frame: header and bottom navigation do not travel
+   with page content. Only the inner .content region scrolls. */
+body:has(#mainApp:not(.hidden)){
+  height:100dvh;
+  min-height:100dvh;
+  overflow:hidden;
+}
+#mainApp.main-app:not(.hidden){
+  height:100dvh;
+  min-height:100dvh;
+  max-height:100dvh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+#mainApp .topbar-v3{
+  flex:0 0 auto;
+  position:relative;
+  top:auto;
+}
+#mainApp .content{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-gutter:stable;
+  touch-action:pan-y;
+}
+.bottom-nav.bottom-nav-v3{
+  position:fixed!important;
+  bottom:0!important;
+  transform:translateX(-50%)!important;
+  will-change:auto!important;
+  contain:layout paint;
+}
+
+/* League header: smaller crest and cleaner breathing room. */
+.league-hero-v3{
+  min-height:214px;
+  padding:12px 16px;
+  grid-template-columns:34% minmax(0,66%);
+  gap:10px;
+}
+.league-hero-v3 img{
+  width:86%;
+  max-height:176px;
+  justify-self:center;
+  align-self:center;
+}
+
+/* Overview removed: five fixed league destinations now share the tab row. */
+.league-tabs-v3{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  overflow-x:hidden!important;
+}
+
+@media(max-width:600px){
+  .league-hero-v3{
+    min-height:190px;
+    padding:10px 12px;
+    grid-template-columns:32% minmax(0,68%);
+    gap:8px;
+  }
+  .league-hero-v3 img{
+    width:90%;
+    max-height:148px;
+  }
+  .league-tabs-v3{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  }
+}
+
+@media(max-width:360px){
+  .league-hero-v3{
+    min-height:174px;
+    padding:9px 9px;
+    grid-template-columns:31% minmax(0,69%);
+    gap:6px;
+  }
+  .league-hero-v3 img{
+    width:92%;
+    max-height:132px;
+  }
+  .league-tabs-v3 button{
+    padding:10px 4px!important;
+    font-size:7.5px!important;
+  }
+}
+
+/* Keep the standard app chrome visually stationary during cross-page navigation.
+   Only the inner content participates in the fallback page transition. */
+.bottom-nav.bottom-nav-v3{view-transition-name:icat-bottom-nav;}
+#mainApp .topbar-v3{view-transition-name:icat-topbar;}
+::view-transition-group(icat-bottom-nav),
+::view-transition-old(icat-bottom-nav),
+::view-transition-new(icat-bottom-nav),
+::view-transition-group(icat-topbar),
+::view-transition-old(icat-topbar),
+::view-transition-new(icat-topbar){animation:none!important;}
+html.page-leaving #mainApp.main-app{
+  opacity:1!important;
+  transform:none!important;
+  pointer-events:auto!important;
+}
+#mainApp .content{
+  transition:opacity 115ms ease,transform 115ms ease;
+}
+html.page-leaving #mainApp .content{
+  opacity:.15;
+  transform:translateY(-3px);
+  pointer-events:none;
+}
