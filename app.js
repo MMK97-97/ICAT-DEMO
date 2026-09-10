@@ -13,6 +13,53 @@
   const YOUTUBE_CHANNEL_HANDLE = '@ICAT-FT20';
   const LOGIN_EMAIL_STORAGE = 'icat_login_email_v32';
 
+
+  // Android persistence adapter. In the browser this is a no-op wrapper around localStorage.
+  // In the Android WebView, persistent keys are mirrored to the app-private SQLite database
+  // through ICATNative. Existing localStorage data is migrated automatically the first time a
+  // key is requested on the upgraded Android build.
+  const browserPersistentStorage = window.localStorage;
+  const persistentStore = {
+    nativeAvailable() {
+      return !!(window.ICATNative && typeof window.ICATNative.dbGet === 'function' && typeof window.ICATNative.dbSet === 'function');
+    },
+    get(key) {
+      try {
+        if (this.nativeAvailable()) {
+          const nativeValue = window.ICATNative.dbGet(String(key));
+          if (nativeValue !== null && nativeValue !== undefined) {
+            const value = String(nativeValue);
+            if (browserPersistentStorage.getItem(key) !== value) browserPersistentStorage.setItem(key, value);
+            return value;
+          }
+          const legacy = browserPersistentStorage.getItem(key);
+          if (legacy !== null) window.ICATNative.dbSet(String(key), String(legacy));
+          return legacy;
+        }
+      } catch (error) {
+        console.warn('ICAT local database read fallback', error);
+      }
+      return browserPersistentStorage.getItem(key);
+    },
+    set(key, value) {
+      const text = String(value);
+      browserPersistentStorage.setItem(key, text);
+      try {
+        if (this.nativeAvailable()) window.ICATNative.dbSet(String(key), text);
+      } catch (error) {
+        console.warn('ICAT local database write fallback', error);
+      }
+    },
+    remove(key) {
+      browserPersistentStorage.removeItem(key);
+      try {
+        if (this.nativeAvailable() && typeof window.ICATNative.dbRemove === 'function') window.ICATNative.dbRemove(String(key));
+      } catch (error) {
+        console.warn('ICAT local database remove fallback', error);
+      }
+    }
+  };
+
   const demo = {
     user: { name: 'Manoj', fullName: 'Manoj Kumar', role: 'member', team: 'Thunderbolts', email: 'captain@icat.demo', phone: '+18135550101' },
     league: {
@@ -181,7 +228,8 @@
   };
 
   let state = load();
-  let role = localStorage.getItem(ROLE_STORAGE) || 'member';
+  if (persistentStore.get(STORAGE) === null) persistentStore.set(STORAGE, JSON.stringify(state));
+  let role = persistentStore.get(ROLE_STORAGE) || 'member';
   let activeMatchTab = 'live';
   let activeLeagueTab = 'overview';
   let activeAdminTab = 'matches';
@@ -199,7 +247,7 @@
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
   function load() {
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE) || '{}');
+      const saved = JSON.parse(persistentStore.get(STORAGE) || '{}');
       const merged = { ...clone(demo), ...saved };
       merged.squads = { ...clone(demo.squads), ...(saved.squads || {}) };
       merged.teamAvailability = { ...clone(demo.teamAvailability), ...(saved.teamAvailability || {}) };
@@ -242,7 +290,7 @@
       return clone(demo);
     }
   }
-  function save() { localStorage.setItem(STORAGE, JSON.stringify(state)); }
+  function save() { persistentStore.set(STORAGE, JSON.stringify(state)); }
   function initials(name) { return String(name || '').split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase(); }
   function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
   function dateLabel(d) { return new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' }); }
@@ -368,6 +416,25 @@
     return target[tab] || Object.values(target)[0];
   }
 
+  // v3.2.26 — browser Back / Android swipe-back recovery.
+  // A page restored from the browser back-forward cache can retain the
+  // temporary `page-leaving` class. Reset it whenever a page is shown again
+  // so the UI can never remain faded/blank after Back or swipe-back.
+  function restoreVisiblePageState() {
+    const root = document.documentElement;
+    root.classList.remove('page-leaving');
+    root.classList.add('page-ready');
+    if (document.body) {
+      document.body.style.opacity = '';
+      document.body.style.visibility = '';
+      document.body.style.pointerEvents = '';
+    }
+  }
+  window.addEventListener('pageshow', restoreVisiblePageState, { capture: true });
+  window.addEventListener('popstate', restoreVisiblePageState, { capture: true });
+  window.addEventListener('pagehide', () => document.documentElement.classList.remove('page-leaving'), { capture: true });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) restoreVisiblePageState(); });
+
   function transitionNavigate(url, replace = false) {
     const here = location.pathname.split('/').pop() || 'index.html';
     if (here === url) return;
@@ -490,7 +557,7 @@
     $$('.organizer-only').forEach(el => el.classList.toggle('hidden', !isOrganizer()));
     $$('.member-only').forEach(el => el.classList.toggle('hidden', !isMember()));
     $$('.drawer-profile-list [data-route="team"], .drawer-profile-list [data-league-shortcut="stats"]').forEach(el => el.classList.toggle('hidden', isOrganizer()));
-    const loginEmail = localStorage.getItem(LOGIN_EMAIL_STORAGE) || '';
+    const loginEmail = persistentStore.get(LOGIN_EMAIL_STORAGE) || '';
     if (!isOrganizer() && loginEmail) {
       const loginUser = resolveRosterUser(loginEmail);
       if (loginUser) Object.assign(state.user, loginUser);
@@ -619,6 +686,29 @@
     bindDynamic();
   }
 
+  function renderVenueDirectory(filter = 'all') {
+    const list = document.querySelector('.venue-list-v3');
+    if (!list) return;
+    const key = String(filter || 'all').toLowerCase();
+    const rows = state.venues.filter(v => {
+      if (key === 'all') return true;
+      const hay = `${v.name || ''} ${v.city || ''}`.toLowerCase();
+      if (key === 'st-petersburg') return hay.includes('st. petersburg') || hay.includes('saint petersburg');
+      return hay.includes(key);
+    });
+    list.innerHTML = rows.length ? rows.map(v => `<article><b>⌖</b><div><strong>${escapeHtml(v.name)}</strong><small>${escapeHtml(v.city)}</small><p>${escapeHtml(v.note)}</p></div><span>${v.matches} fixtures</span><i>›</i></article>`).join('') : `<div class="empty-state small-empty"><strong>No venues in this filter</strong><span>Try another location.</span></div>`;
+  }
+
+  function bindVenueFilters() {
+    $$('.venue-filter-v3 button').forEach(btn => {
+      btn.onclick = () => {
+        $$('.venue-filter-v3 button').forEach(x => x.classList.remove('active'));
+        btn.classList.add('active');
+        renderVenueDirectory(btn.dataset.venueFilter || 'all');
+      };
+    });
+  }
+
   function renderLeague(tab = 'matches') {
     activeLeagueTab = tab;
     $$('#leagueTabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -644,7 +734,7 @@
       p.innerHTML = `<div class="squad-team-grid">${state.teams.map(t => `<article class="squad-team-card"><div class="squad-team-head"><span class="team-badge ${t.color}">${initials(t.name)}</span><div><strong>${escapeHtml(t.name)}</strong><small>Captain · ${escapeHtml(t.captain)}</small></div><span>${(state.squads[t.name] || []).length} players</span></div><div class="squad-preview">${(state.squads[t.name] || []).slice(0, 5).map(p => `<div><b>${escapeHtml(p[0])}</b><small>${escapeHtml(p[1])}</small></div>`).join('')}</div><button class="ghost-btn small view-squad" data-team="${escapeHtml(t.name)}">View Squad</button></article>`).join('')}</div>`;
     }
     if (tab === 'venues') {
-      p.innerHTML = `<section class="venues-page-v3"><div class="venues-head-v3"><div><span>EXPLORE · PLAY · PLAN · TOGETHER</span><h2>Venues</h2></div></div><div class="venue-search-v3">⌕ <span>Search venues in Tampa Bay...</span></div><div class="venue-filter-v3"><button class="active">All Venues</button><button>⌖ Tampa</button><button>⌖ St. Petersburg</button><button>⌖ Clearwater</button></div><div class="venue-list-v3">${state.venues.map((v,i)=>`<article><b>⌖</b><div><strong>${escapeHtml(v.name)}</strong><small>${escapeHtml(v.city)}</small><p>${escapeHtml(v.note)}</p></div><span>${v.matches} fixtures</span><i>›</i></article>`).join('')}</div></section>`;
+      p.innerHTML = `<section class="venues-page-v3"><div class="venues-head-v3"><div><span>EXPLORE · PLAY · PLAN · TOGETHER</span><h2>Venues</h2></div></div><div class="venue-search-v3">⌕ <span>Search venues in Tampa Bay...</span></div><div class="venue-filter-v3"><button class="active" data-venue-filter="all">All Venues</button><button data-venue-filter="tampa">⌖ Tampa</button><button data-venue-filter="st-petersburg">⌖ St. Petersburg</button><button data-venue-filter="clearwater">⌖ Clearwater</button></div><div class="venue-list-v3">${state.venues.map((v,i)=>`<article><b>⌖</b><div><strong>${escapeHtml(v.name)}</strong><small>${escapeHtml(v.city)}</small><p>${escapeHtml(v.note)}</p></div><span>${v.matches} fixtures</span><i>›</i></article>`).join('')}</div></section>`;
     }
     bindDynamic();
   }
@@ -1216,7 +1306,14 @@
   function openLiveMatchDetails(id) {
     const m = state.matches.find(x => x.id === id);
     if (!m) return;
-    modal('Live Match', `<div class="live-detail-modal"><div class="live-now-chip"><i></i> LIVE · ${escapeHtml(state.league.name)}</div><div class="live-detail-score"><div><strong>${escapeHtml(m.teamA)}</strong><b>${escapeHtml(m.scoreA)}</b><small>${escapeHtml(m.oversA)} overs</small></div><span>VS</span><div><strong>${escapeHtml(m.teamB)}</strong><b>${escapeHtml(m.scoreB)}</b><small>${escapeHtml(m.innings)}</small></div></div><div class="live-detail-grid"><div><span>Current Batter</span><strong>${escapeHtml(m.batsman)}</strong></div><div><span>Current Bowler</span><strong>${escapeHtml(m.bowler)}</strong></div><div><span>Run Rate</span><strong>${escapeHtml(m.crr)}</strong></div><div><span>Venue</span><strong>${escapeHtml(m.venue)}</strong></div></div></div>`, canAdminScoreMatch(m) ? `<button class="primary-btn" id="modalLiveScore">Open Live Scoring</button>` : `<button class="ghost-btn" id="modalDone">Close</button>`);
+    const live = m.status === 'live';
+    const result = m.status === 'result';
+    const statusLabel = live ? 'LIVE' : result ? 'FINAL' : 'UPCOMING';
+    const title = live ? 'Live Match' : result ? 'Match Result' : 'Match Details';
+    const body = live
+      ? `<div class="live-detail-modal"><div class="live-now-chip"><i></i> LIVE · ${escapeHtml(state.league.name)}</div><div class="live-detail-score"><div><strong>${escapeHtml(m.teamA)}</strong><b>${escapeHtml(m.scoreA)}</b><small>${escapeHtml(m.oversA)} overs</small></div><span>VS</span><div><strong>${escapeHtml(m.teamB)}</strong><b>${escapeHtml(m.scoreB)}</b><small>${escapeHtml(m.innings)}</small></div></div><div class="live-detail-grid"><div><span>Current Batter</span><strong>${escapeHtml(m.batsman)}</strong></div><div><span>Current Bowler</span><strong>${escapeHtml(m.bowler)}</strong></div><div><span>Run Rate</span><strong>${escapeHtml(m.crr)}</strong></div><div><span>Venue</span><strong>${escapeHtml(m.venue)}</strong></div></div></div>`
+      : `<div class="live-detail-modal"><div class="live-now-chip">${statusLabel} · ${escapeHtml(state.league.name)}</div><div class="live-detail-score"><div><strong>${escapeHtml(m.teamA)}</strong>${result ? `<b>${escapeHtml(m.scoreA || '—')}</b>` : ''}</div><span>VS</span><div><strong>${escapeHtml(m.teamB)}</strong>${result ? `<b>${escapeHtml(m.scoreB || '—')}</b>` : ''}</div></div><div class="live-detail-grid"><div><span>Date</span><strong>${escapeHtml(dateLabel(m.date))}</strong></div><div><span>Time</span><strong>${escapeHtml(m.time || '—')}</strong></div><div><span>Overs</span><strong>${escapeHtml(m.overs || 20)}</strong></div><div><span>Venue</span><strong>${escapeHtml(m.venue || '—')}</strong></div></div>${result && m.result ? `<div class="result-line">${escapeHtml(m.result)}</div>` : ''}</div>`;
+    modal(title, body, canAdminScoreMatch(m) ? `<button class="primary-btn" id="modalLiveScore">Open Live Scoring</button>` : `<button class="ghost-btn" id="modalDone">Close</button>`);
     if ($('modalLiveScore')) $('modalLiveScore').onclick = () => { closeModal(); loadMatchIntoScorer(m); };
     if ($('modalDone')) $('modalDone').onclick = closeModal;
   }
@@ -1404,6 +1501,7 @@
   }
 
   function bindDynamic() {
+    bindVenueFilters();
     $$('.open-live-match').forEach(b => b.onclick = () => openLiveMatchDetails(b.dataset.matchId));
     $$('.score-live-match,.score-match').forEach(b => b.onclick = () => { const m = state.matches.find(x => x.id === b.dataset.matchId); if (m) loadMatchIntoScorer(m); });
     $$('.edit-match').forEach(b => b.onclick = () => openMatchCenter(b.dataset.matchId));
@@ -1497,9 +1595,9 @@
       return;
     }
     role = 'organizer';
-    localStorage.setItem(ROLE_STORAGE, role);
-    localStorage.setItem(LOGIN_STORAGE, '1');
-    localStorage.setItem(LOGIN_EMAIL_STORAGE, ORGANIZER_EMAIL);
+    persistentStore.set(ROLE_STORAGE, role);
+    persistentStore.set(LOGIN_STORAGE, '1');
+    persistentStore.set(LOGIN_EMAIL_STORAGE, ORGANIZER_EMAIL);
     if ($('loginScreen')) $('loginScreen').classList.add('hidden');
     if ($('mainApp')) $('mainApp').classList.remove('hidden');
     applyRoleUI();
@@ -1526,9 +1624,9 @@
     // has Organizer-granted Admin access. CAPTAIN / ADMIN ACCESS is the only
     // path that creates an admin session.
     role = asAdmin ? 'admin' : 'member';
-    localStorage.setItem(ROLE_STORAGE, role);
-    localStorage.setItem(LOGIN_STORAGE, '1');
-    localStorage.setItem(LOGIN_EMAIL_STORAGE, email);
+    persistentStore.set(ROLE_STORAGE, role);
+    persistentStore.set(LOGIN_STORAGE, '1');
+    persistentStore.set(LOGIN_EMAIL_STORAGE, email);
     $('loginScreen').classList.add('hidden');
     $('mainApp').classList.remove('hidden');
     applyRoleUI(); renderCaptains();
@@ -1538,13 +1636,13 @@
 
   function demoLogin() {
     toast('Use MEMBER LOGIN with your registered team email'); return;
-    role = 'member'; Object.assign(state.user, clone(demo.user)); localStorage.setItem(ROLE_STORAGE, role); localStorage.setItem(LOGIN_STORAGE, '1'); localStorage.setItem(LOGIN_EMAIL_STORAGE,'');
+    role = 'member'; Object.assign(state.user, clone(demo.user)); persistentStore.set(ROLE_STORAGE, role); persistentStore.set(LOGIN_STORAGE, '1'); persistentStore.set(LOGIN_EMAIL_STORAGE,'');
     $('loginScreen').classList.add('hidden'); $('mainApp').classList.remove('hidden'); applyRoleUI(); renderCaptains();
     window.setTimeout(() => transitionNavigate('home.html'), 90);
   }
 
   function logout() {
-    localStorage.removeItem(LOGIN_STORAGE); localStorage.removeItem(ROLE_STORAGE); localStorage.removeItem(LOGIN_EMAIL_STORAGE); role = 'member';
+    persistentStore.remove(LOGIN_STORAGE); persistentStore.remove(ROLE_STORAGE); persistentStore.remove(LOGIN_EMAIL_STORAGE); role = 'member';
     $('mainApp').classList.add('hidden'); $('loginScreen').classList.remove('hidden'); applyRoleUI(); transitionNavigate('index.html', true);
   }
 
@@ -1563,9 +1661,10 @@
   }
 
   function init() {
+    restoreVisiblePageState();
     enforceStandardBottomNav();
     const cfg = currentPageConfig();
-    const loggedIn = localStorage.getItem(LOGIN_STORAGE) === '1';
+    const loggedIn = persistentStore.get(LOGIN_STORAGE) === '1';
 
     applyRoleUI();
     renderCaptains();
@@ -1578,6 +1677,8 @@
     }));
     $('menuBtn').onclick = openDrawer; $('drawerClose').onclick = closeDrawer; $('drawerBackdrop').onclick = closeDrawer; $('logoutBtn').onclick = logout; if ($('moreLogout')) $('moreLogout').onclick = logout; if ($('moreRequestPlayer')) $('moreRequestPlayer').onclick = requestPlayer;
     $('loginBtn').onclick = () => login(false); $('adminLoginBtn').onclick = () => login(true); $('organizerLoginBtn').onclick = () => organizerLogin(); if ($('demoBtn')) $('demoBtn').onclick = demoLogin;
+    $$('.forgot-link').forEach(b => b.onclick = () => toast('For a login reset, contact your ICAT league organizer'));
+    $$('.season-switcher-v3 button').forEach(b => b.onclick = () => toast('Winter 2026 is the active season'));
     $('topLiveBtn').onclick = () => route('matches', { tab: 'live' }); if ($('adminQuickBtn')) $('adminQuickBtn').onclick = () => route('admin'); if ($('organizerQuickBtn')) $('organizerQuickBtn').onclick = () => route('organizer');
     $('viewAllLiveBtn').onclick = () => route('matches', { tab: 'live' }); $('viewRecentBtn').onclick = () => route('matches', { tab: 'recent' });
     $$('#matchesTabs button').forEach(b => b.onclick = () => route('matches', { tab: b.dataset.matchTab }));
