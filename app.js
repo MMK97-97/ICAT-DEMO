@@ -1331,19 +1331,32 @@
     return `${Number(inn.runs || 0)}/${Number(inn.wickets || 0)} (${Math.floor(balls / 6)}.${balls % 6})`;
   }
 
+  function matchTimeLabel(value) {
+    const raw = String(value || '').trim();
+    const match = raw.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return raw || '—';
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    const suffix = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${String(minute).padStart(2, '0')} ${suffix}`;
+  }
+
   function renderMatchInfoTab(m) {
     const xiA = m.rosterA?.length ? m.rosterA : [];
     const xiB = m.rosterB?.length ? m.rosterB : [];
     const umpires = [m.umpire1, m.umpire2].filter(Boolean);
     return `<div class="mc-info-tab">
+      <div class="mc-section-title"><div><span>MATCH INFORMATION</span><strong>Match-day details</strong></div><small>${escapeHtml(m.overs || 20)} overs</small></div>
       <div class="mc-info-grid">
         <div><span>Day</span><strong>${escapeHtml(matchDayName(m.date))}</strong></div>
         <div><span>Date</span><strong>${escapeHtml(dateLong(m.date))}</strong></div>
-        <div><span>Time</span><strong>${escapeHtml(m.time || '—')}</strong></div>
+        <div><span>Time</span><strong>${escapeHtml(matchTimeLabel(m.time))}</strong></div>
         <div><span>Venue</span><strong>${escapeHtml(m.venue || '—')}</strong></div>
         <div class="wide"><span>Venue Details</span><strong>${escapeHtml(matchVenueNote(m))}</strong></div>
         <div class="wide"><span>Umpires</span><strong>${escapeHtml(umpires.length ? umpires.join(' · ') : 'Not assigned')}</strong></div>
       </div>
+      <div class="mc-section-title mc-squad-heading"><div><span>SQUADS</span><strong>Confirmed Playing XI</strong></div><small>${xiA.length + xiB.length} selected</small></div>
       <div class="mc-squads-grid">
         <section><div class="section-row"><h3>${escapeHtml(m.teamA)} · Playing XI</h3><span class="muted">${xiA.length ? `${xiA.length} players` : 'Not confirmed'}</span></div><div class="mc-xi-list">${xiA.length ? xiA.map((p,i)=>`<div><span>${i+1}</span><strong>${escapeHtml(p)}</strong></div>`).join('') : '<p class="muted">Playing XI will appear after the Admin confirms the squad in Match Center.</p>'}</div></section>
         <section><div class="section-row"><h3>${escapeHtml(m.teamB)} · Playing XI</h3><span class="muted">${xiB.length ? `${xiB.length} players` : 'Not confirmed'}</span></div><div class="mc-xi-list">${xiB.length ? xiB.map((p,i)=>`<div><span>${i+1}</span><strong>${escapeHtml(p)}</strong></div>`).join('') : '<p class="muted">Playing XI will appear after the Admin confirms the squad in Match Center.</p>'}</div></section>
@@ -1366,7 +1379,8 @@
 
   function renderMatchCommentaryTab(m) {
     const snapshot = scoringSnapshotForMatch(m);
-    if (!snapshot?.innings?.length) return `<div class="mc-empty"><strong>No commentary yet</strong><span>Ball-by-ball commentary will appear here as Live Scoring records the match.</span></div>`;
+    const liveStatus = m.status === 'live' ? '<span class="mc-live-dot"></span> LIVE' : 'BALL-BY-BALL';
+    if (!snapshot?.innings?.length) return `<div class="mc-live-header"><div><small>${liveStatus}</small><strong>Live Commentary</strong></div><span>${escapeHtml(m.teamA)} vs ${escapeHtml(m.teamB)}</span></div><div class="mc-empty"><strong>No commentary yet</strong><span>Ball-by-ball commentary will appear here as Live Scoring records the match.</span></div>`;
     const rows = [];
     snapshot.innings.forEach((inn, inningsIndex) => {
       let legalBalls = 0;
@@ -1376,8 +1390,27 @@
         if (d.legal) legalBalls += 1;
       });
     });
-    if (!rows.length) return `<div class="mc-empty"><strong>Match ready</strong><span>Commentary will begin with the first scored delivery.</span></div>`;
-    return `<div class="mc-commentary-list">${rows.reverse().map(r => `<article><b>${escapeHtml(r.ball)}</b><div><strong>${escapeHtml(r.text)}</strong><small>${escapeHtml(r.team)} · ${r.inningsIndex === 0 ? '1st Innings' : '2nd Innings'}</small></div><span>${escapeHtml(r.token || '•')}</span></article>`).join('')}</div>`;
+    if (!rows.length) return `<div class="mc-live-header"><div><small>${liveStatus}</small><strong>Live Commentary</strong></div><span>${escapeHtml(m.teamA)} vs ${escapeHtml(m.teamB)}</span></div><div class="mc-empty"><strong>Match ready</strong><span>Commentary will begin with the first scored delivery.</span></div>`;
+    return `<div class="mc-live-header"><div><small>${liveStatus}</small><strong>Live Commentary</strong></div><span>${rows.length} updates</span></div><div class="mc-commentary-list">${rows.reverse().map(r => `<article><b>${escapeHtml(r.ball)}</b><div><strong>${escapeHtml(r.text)}</strong><small>${escapeHtml(r.team)} · ${r.inningsIndex === 0 ? '1st Innings' : '2nd Innings'}</small></div><span>${escapeHtml(r.token || '•')}</span></article>`).join('')}</div>`;
+  }
+
+  function youtubeVideoId(url) {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    const match = raw.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|live\/))([A-Za-z0-9_-]{6,})/i);
+    return match ? match[1] : '';
+  }
+
+  function renderMatchWatchTab(m) {
+    const streamUrl = m.youtubeUrl || m.watchUrl || m.streamUrl || '';
+    const videoId = youtubeVideoId(streamUrl);
+    if (m.status !== 'live') {
+      return `<div class="mc-watch-shell"><div class="mc-watch-state"><span class="mc-watch-icon">▶</span><div><small>ICAT LIVE</small><strong>Broadcast not live yet</strong><p>Watch will become available here when this match has an active ICAT YouTube stream.</p></div></div></div>`;
+    }
+    if (videoId) {
+      return `<div class="mc-watch-shell"><div class="mc-video-frame"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0" title="ICAT live match" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><div class="mc-watch-footer"><div><span class="mc-live-dot"></span><strong>LIVE ON ICAT</strong><small>${escapeHtml(YOUTUBE_CHANNEL_HANDLE)}</small></div><button class="ghost-btn" id="mcWatchYoutube">Open YouTube</button></div></div>`;
+    }
+    return `<div class="mc-watch-shell"><div class="mc-watch-state is-live"><span class="mc-watch-icon">▶</span><div><small><span class="mc-live-dot"></span> LIVE ON ICAT</small><strong>Watch ${escapeHtml(m.teamA)} vs ${escapeHtml(m.teamB)}</strong><p>The live broadcast opens directly on the official ${escapeHtml(YOUTUBE_CHANNEL_HANDLE)} YouTube channel.</p><button class="primary-btn" id="mcWatchYoutube">Watch Live</button></div></div></div>`;
   }
 
   function renderMatchScorecardTab(m) {
@@ -1396,10 +1429,16 @@
   function renderMatchCenterTab(m, tab) {
     const panel = $('matchCenterTabPanel');
     if (!panel) return;
-    $$('.match-center-tabs button').forEach(b => b.classList.toggle('active', b.dataset.matchCenterTab === tab));
-    if (tab === 'commentary') panel.innerHTML = renderMatchCommentaryTab(m);
+    $$('.match-center-tabs button').forEach(b => {
+      const active = b.dataset.matchCenterTab === tab;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    if (tab === 'watch') panel.innerHTML = renderMatchWatchTab(m);
+    else if (tab === 'live') panel.innerHTML = renderMatchCommentaryTab(m);
     else if (tab === 'scorecard') panel.innerHTML = renderMatchScorecardTab(m);
     else panel.innerHTML = renderMatchInfoTab(m);
+    if ($('mcWatchYoutube')) $('mcWatchYoutube').onclick = () => watchLiveStream();
   }
 
   function openLiveMatchDetails(id) {
@@ -1409,16 +1448,18 @@
     const result = m.status === 'result';
     const statusLabel = live ? 'LIVE' : result ? 'FINAL' : 'UPCOMING';
     const body = `<div class="match-center-viewer">
-      <div class="match-center-summary"><span class="round-chip">${statusLabel}</span><strong>${escapeHtml(m.teamA)} <b>vs</b> ${escapeHtml(m.teamB)}</strong><small>${escapeHtml(state.league.name)}</small></div>
-      <div class="match-center-tabs"><button class="active" data-match-center-tab="info">Info</button><button data-match-center-tab="commentary">Commentary</button><button data-match-center-tab="scorecard">Scorecard</button></div>
-      <div id="matchCenterTabPanel"></div>
+      <section class="mc-match-header">
+        <div class="mc-title-row"><div><span class="mc-match-kicker">${escapeHtml(state.league.season)} · ${escapeHtml(m.overs || 20)} OVERS</span><h2>${escapeHtml(m.teamA)} <em>vs</em> ${escapeHtml(m.teamB)}</h2></div><span class="mc-status-pill ${live ? 'is-live' : result ? 'is-final' : ''}">${statusLabel}</span></div>
+        <div class="mc-match-meta"><span><b>Series:</b> ${escapeHtml(state.league.name)}</span><i></i><span><b>Venue:</b> ${escapeHtml(m.venue || '—')}</span><i></i><span><b>Date &amp; Time:</b> ${escapeHtml(dateLong(m.date))}, ${escapeHtml(matchTimeLabel(m.time))}</span></div>
+      </section>
+      <div class="match-center-tabs" role="tablist" aria-label="Match Center"><button data-match-center-tab="info" role="tab">Info</button><button data-match-center-tab="watch" role="tab">Watch</button><button data-match-center-tab="live" role="tab">Live</button><button data-match-center-tab="scorecard" role="tab">Scorecard</button></div>
+      <div id="matchCenterTabPanel" class="match-center-tab-panel"></div>
     </div>`;
-    const watchButton = live ? `<button class="ghost-btn" id="modalWatchLive">Watch Live</button>` : '';
     const scoreButton = canAdminScoreMatch(m) ? `<button class="primary-btn" id="modalLiveScore">Open Live Scoring</button>` : `<button class="ghost-btn" id="modalDone">Close</button>`;
-    modal('Match Center', body, `${watchButton}${scoreButton}`);
+    modal('Match Center', body, scoreButton);
+    document.querySelector('#modalRoot .modal')?.classList.add('match-center-modal');
     $$('.match-center-tabs button').forEach(b => b.onclick = () => renderMatchCenterTab(m, b.dataset.matchCenterTab));
-    renderMatchCenterTab(m, 'info');
-    if ($('modalWatchLive')) $('modalWatchLive').onclick = () => watchLiveStream();
+    renderMatchCenterTab(m, live ? 'live' : 'info');
     if ($('modalLiveScore')) $('modalLiveScore').onclick = () => { closeModal(); loadMatchIntoScorer(m); };
     if ($('modalDone')) $('modalDone').onclick = closeModal;
   }
